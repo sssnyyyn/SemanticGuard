@@ -8,7 +8,6 @@ from langgraph.graph import StateGraph, START, END
 
 from google import genai
 
-# Google Gemini API 클라이언트 지연 초기화(Lazy Initialization) 함수
 client = None
 
 def get_gemini_client():
@@ -18,7 +17,7 @@ def get_gemini_client():
     
     gemini_key = os.getenv("GEMINI_API_KEY", "")
     if not gemini_key or gemini_key == "your_actual_gemini_api_key_here":
-        raise ValueError("Google Gemini API 키(GEMINI_API_KEY)가 .env 파일에 설정되어 있지 않습니다. 실시간 API 연동을 위해 키를 입력해 주십시오.")
+        raise ValueError("실시간 API 연동을 위해 키를 입력해 주십시오.")
     
     client = genai.Client(api_key=gemini_key)
     return client
@@ -135,7 +134,6 @@ def call_backend_node(state: CacheState) -> CacheState:
         # Google Gemini API 클라이언트 지연 획득
         gemini_client = get_gemini_client()
         
-        # 신형 SDK 방식의 모델 호출 (최신 gemini-2.5-flash 모델 적용)
         gemini_response = gemini_client.models.generate_content(
             model="gemini-2.5-flash",
             contents=query_text

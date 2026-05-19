@@ -1,12 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import LogDetailModal from '../../components/common/LogDetailModal';
 import './Log.css';
+
+// 날짜 포맷 함수 (YYYY-MM-DD)
+const getFormattedDate = (date) => {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
 
 const Log = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('전체');
+
+  // 기본 검색 기간을 최근 7일로 설정
+  const today = new Date();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(today.getDate() - 7);
+
+  const [startDate, setStartDate] = useState(getFormattedDate(sevenDaysAgo));
+  const [endDate, setEndDate] = useState(getFormattedDate(today));
+
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedLog, setSelectedLog] = useState(null);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -14,6 +33,12 @@ const Log = () => {
       let url = `/api/logs?query=${encodeURIComponent(searchTerm)}`;
       if (statusFilter !== '전체') {
         url += `&status=${encodeURIComponent(statusFilter)}`;
+      }
+      if (startDate) {
+        url += `&start_date=${encodeURIComponent(startDate)}`;
+      }
+      if (endDate) {
+        url += `&end_date=${encodeURIComponent(endDate)}`;
       }
       const data = await api.get(url);
       setLogs(data);
@@ -24,10 +49,9 @@ const Log = () => {
     }
   };
 
-  // 마운트 시 및 상태 필터 토글 시 자동으로 실시간 로드
   useEffect(() => {
     fetchLogs();
-  }, [statusFilter]);
+  }, [statusFilter, startDate, endDate]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -43,7 +67,7 @@ const Log = () => {
           <label className="filter-label">검색어 입력</label>
           <input
             type="text"
-            placeholder="쿼리 내용 혹은 답변 검색."
+            placeholder="질문 내용 검색"
             className="filter-input"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -52,12 +76,19 @@ const Log = () => {
 
         <div className="filter-group">
           <label className="filter-label">기간 설정</label>
-          <div className="filter-input-wrapper">
+          <div className="date-picker-group">
             <input
-              type="text"
-              value="2026.05.11 ~ 2026.05.18"
-              readOnly
-              className="filter-input readonly-input"
+              type="date"
+              className="filter-input date-input"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <span className="date-separator">~</span>
+            <input
+              type="date"
+              className="filter-input date-input"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
             />
           </div>
         </div>
@@ -70,8 +101,6 @@ const Log = () => {
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="전체">전체</option>
-            <option value="성공">성공</option>
-            <option value="실패">실패</option>
             <option value="캐시히트">캐시히트 (Cache Hit)</option>
             <option value="API호출">API호출 (Cache Miss)</option>
           </select>
@@ -111,7 +140,7 @@ const Log = () => {
                 </tr>
               ) : (
                 logs.map((log) => (
-                  <tr key={log.id}>
+                  <tr key={log.id} onClick={() => setSelectedLog(log)} className="clickable-row">
                     <td className="log-time">{log.timestamp}</td>
                     <td className="log-question">{log.query}</td>
                     <td>
@@ -129,6 +158,9 @@ const Log = () => {
           </table>
         </div>
       </div>
+
+      {/* 상세 로그 모달 팝업 (A안) */}
+      <LogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />
     </div>
   );
 };

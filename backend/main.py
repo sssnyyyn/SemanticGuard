@@ -28,13 +28,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# .env 파일의 CORS_ORIGINS 값만 100% 참조하여 연동하며, 누락 시 비인가 접근 차단(안전한 차단 정책 강제)
 cors_origins_env = os.getenv("CORS_ORIGINS", "").strip()
 if cors_origins_env:
     origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
 else:
     origins = []
-    logger.warning("⚠️ 경고: .env 내 CORS_ORIGINS 설정이 누락되었습니다. 보안을 위해 비인가 외부 접속이 강제 차단 정책으로 설정됩니다.")
+    logger.warning("경고: .env 내 CORS_ORIGINS 설정이 누락되었습니다. 보안을 위해 비인가 외부 접속이 강제 차단 정책으로 설정됩니다.")
 
 app.add_middleware(
     CORSMiddleware,
@@ -168,20 +167,32 @@ async def stats():
     }
 
 @app.get("/api/logs")
-async def get_logs(query: Optional[str] = None, status: Optional[str] = None):
+async def get_logs(
+    query: Optional[str] = None, 
+    status: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+):
     logs = await load_logs_async()
     filtered_logs = logs
 
+    # 1. 검색어 필터링 (질문 내용 query 필드에서만 매칭)
     if query:
         query_lower = query.lower()
-        filtered_logs = [log for log in filtered_logs if query_lower in log.get("query", "").lower() or query_lower in log.get("response", "").lower()]
+        filtered_logs = [log for log in filtered_logs if query_lower in log.get("query", "").lower()]
 
+    # 2. 기간 설정 필터링 (시작일/종료일)
+    if start_date:
+        start_date_formatted = start_date.replace("-", ".")
+        filtered_logs = [log for log in filtered_logs if log.get("timestamp", "")[:10] >= start_date_formatted]
+        
+    if end_date:
+        end_date_formatted = end_date.replace("-", ".")
+        filtered_logs = [log for log in filtered_logs if log.get("timestamp", "")[:10] <= end_date_formatted]
+
+    # 3. 상태 필터링
     if status and status != "전체":
-        if status == "성공":
-            filtered_logs = [log for log in filtered_logs if log.get("status") == "성공"]
-        elif status == "실패":
-            filtered_logs = [log for log in filtered_logs if log.get("status") == "실패"]
-        elif status == "캐시히트":
+        if status == "캐시히트":
             filtered_logs = [log for log in filtered_logs if log.get("is_cache_hit", False)]
         elif status == "API호출":
             filtered_logs = [log for log in filtered_logs if not log.get("is_cache_hit", False)]
@@ -361,6 +372,68 @@ async def clear_cache():
     except Exception as e:
         logger.error(f"캐시 초기화 중 오류: {e}")
         raise HTTPException(status_code=500, detail=f"캐시 초기화 실패: {str(e)}")
+
+class InquiryRequest(BaseModel):
+    email: str
+    title: str
+    content: str
+
+def send_naver_email(sender_email: str, subject: str, content: str) -> bool:
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    to_email = "happy08164@naver.com"
+
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_pass = os.getenv("SMTP_PASSWORD", "")
+    
+    if not smtp_user or not smtp_pass:
+        logger.warning(".env 파일에 SMTP_USER 또는 SMTP_PASSWORD 설정이 비어있어 모의 메일 전송으로 우회 처리합니다. (수신 예정 메일: 관리자 지정 이메일)")
+        return False
+        
+    try:
+        smtp_host = "smtp.naver.com"
+        smtp_port = 465 # SSL 보안 포트
+        
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = to_email
+        msg['Subject'] = f"[SemanticGuard 문의] {subject}"
+        
+        body_text = f"문의 고객 회신처: {sender_email}\n\n문의 사항 내용:\n{content}"
+        msg.attach(MIMEText(body_text, 'plain', 'utf-8'))
+        
+        with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, to_email, msg.as_string())
+        logger.info("네이버 SMTP를 통해 실제 메일 전송에 성공하였습니다.")
+        return True
+    except Exception as e:
+        logger.error(f"네이버 SMTP 메일 전송 중 에러가 발생했습니다: {e}")
+        return False
+
+@app.post("/api/inquiry")
+async def create_inquiry(payload: InquiryRequest):
+    logger.info("================ 신규 문의사항 접수 ================")
+    logger.info(f"회신 이메일: {payload.email}")
+    logger.info(f"제목: {payload.title}")
+    logger.info(f"내용: {payload.content}")
+    logger.info("=================================================")
+    
+    # 실제 네이버 SMTP 메일 전송 시도
+    sent = send_naver_email(payload.email, payload.title, payload.content)
+    
+    if sent:
+        return {
+            "status": "success",
+            "message": "문의사항이 성공적으로 접수되었습니다. 검토 후 신속하게 기재하신 회신 이메일로 답변을 드리겠습니다."
+        }
+    else:
+        return {
+            "status": "success",
+            "message": "문의사항이 성공적으로 접수되었습니다."
+        }
 
 @app.get("/health")
 async def health():

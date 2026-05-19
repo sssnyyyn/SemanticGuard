@@ -34,12 +34,12 @@ const Settings = () => {
     setMsg('');
     try {
       await api.post('/api/settings', { similarity_threshold: threshold });
-      setMsg('⚙️ 임계치 설정이 실시간으로 안전하게 반영되었습니다!');
+      setMsg('임계치 설정이 실시간으로 안전하게 반영되었습니다!');
       setTimeout(() => setMsg(''), 3000);
       fetchSettings();
     } catch (err) {
       console.error(err);
-      setMsg('❌ 설정 저장 중 에러가 발생했습니다.');
+      setMsg('설정 저장 중 에러가 발생했습니다.');
     } finally {
       setSaving(false);
     }
@@ -60,7 +60,7 @@ const Settings = () => {
       fetchSettings();
     } catch (err) {
       console.error(err);
-      setClearMsg('❌ 캐시 초기화 작업 도중 오류가 발생했습니다.');
+      setClearMsg('캐시 초기화 작업 도중 오류가 발생했습니다.');
     } finally {
       setClearing(false);
     }
@@ -72,18 +72,16 @@ const Settings = () => {
 
   return (
     <div className="settings-container">
-      {/* 1열: 좌측 임계치 설정 & 우측 로컬 인덱스 상태 모니터링 (Grid 구성) */}
       <div className="settings-grid-1row">
-        
-        {/* 1열 1행: 의미론적 유사도 캐시 설정 */}
+
         <div className="card-box settings-card">
-          <h2 className="settings-section-title">의미론적 유사도 캐시 설정</h2>
+          <h2 className="settings-section-title">유사도 캐시 민감도 설정</h2>
           <p className="settings-desc">
-            의미론적 캐싱 알고리즘의 유사도 판단 기준선(Threshold)을 실시간 조작합니다.
-            임계치를 높이면 질문이 거의 완벽히 일치해야 캐시가 적용(엄격 모드)되며, 
-            낮추면 유연하게 넓은 의미의 캐시 응답이 적용(유연 모드)됩니다.
+            캐시 적중 여부를 판별하는 유사도 임계치(Threshold)를 실시간으로 제어합니다.
+            민감도를 높이면 질문이 거의 동일해야 캐시가 활성화(엄격 모드)되어 답변의 정확도가 향상되고,
+            민감도를 낮추면 표현이 조금 다르더라도 문맥적 유사성이 높을 때 캐시가 작동(유연 모드)하여 응답 속도가 대폭 단축됩니다.
           </p>
-          
+
           <div className="slider-wrapper">
             <div className="slider-limits">
               <span>0% (전체 캐시 히트 허용)</span>
@@ -121,7 +119,6 @@ const Settings = () => {
           </div>
         </div>
 
-        {/* 1열 2행: 로컬 임베딩 인덱스 모니터링 및 초기화 */}
         {sysInfo && (
           <div className="card-box info-card">
             <h2 className="settings-section-title">로컬 임베딩 인덱스 모니터링</h2>
@@ -158,7 +155,7 @@ const Settings = () => {
                   className="settings-clear-btn"
                   disabled={clearing}
                 >
-                  {clearing ? '인덱싱 비우는 중...' : '캐시 전체 초기화'}
+                  {clearing ? '인덱싱 비우는 중..' : '캐시 전체 초기화'}
                 </button>
                 {clearMsg && (
                   <span className={`settings-msg ${clearMsg.includes('❌') ? 'error' : 'success'}`}>
@@ -171,14 +168,13 @@ const Settings = () => {
         )}
       </div>
 
-      {/* 2열: 업스트림 모델 연결 상태 (Full Width) */}
       {sysInfo && sysInfo.upstream && (
         <div className="card-box upstream-card" style={{ marginTop: '24px' }}>
           <h2 className="settings-section-title">업스트림 모델 연결 상태 (Upstream Hub)</h2>
           <p className="settings-desc">
             캐시 미스 시 구동되는 상위 클라우드 LLM 추론 서버 및 로컬 백업 엔드포인트의 통신 맥동 상태를 감시합니다.
           </p>
-          
+
           <div className="upstream-table-wrapper">
             <table className="upstream-table">
               <thead>

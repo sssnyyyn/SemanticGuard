@@ -4,27 +4,9 @@ import {
   LineChart, Line
 } from 'recharts';
 
-// 모의 데이터 (Mock Data)
-const defaultBarData = [
-  { name: 'Jan', cache: 0, api: 2400 },
-  { name: 'Feb', cache: 3000, api: 1398 },
-  { name: 'Mar', cache: 2000, api: 9800 },
-  { name: 'Apr', cache: 2780, api: 3908 },
-  { name: 'May', cache: 1890, api: 4800 },
-  { name: 'Jun', cache: 2390, api: 3800 },
-  { name: 'Jul', cache: 3490, api: 0 },
-];
-
-const defaultLineData = [
-  { time: '09:00', latency: 45 },
-  { time: '12:00', latency: 85 },
-  { time: '15:00', latency: 40 },
-  { time: '18:00', latency: 90 },
-];
-
 const DashboardCharts = ({ chartsData }) => {
-  const barData = chartsData?.barData || defaultBarData;
-  const lineData = chartsData?.lineData || defaultLineData;
+  const barData = chartsData?.barData || [];
+  const lineData = chartsData?.lineData || [];
   return (
     <div className="charts-grid">
       <div className="card-box chart-card">

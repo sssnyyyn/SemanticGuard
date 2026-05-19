@@ -160,7 +160,25 @@
   width: 100%;
 }
 
+/* Recharts 차트 클릭 시 생기는 Focus ring 제거 */
+.recharts-wrapper:focus,
+.recharts-surface:focus,
+.recharts-container:focus,
+.recharts-responsive-container:focus,
+svg:focus {
+  outline: none !important;
+}
+
 /* History Table */
+.history-table-wrapper {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+}
+
 .history-table-container {
   width: 100%;
   overflow-x: auto;
@@ -173,20 +191,35 @@
 
 .history-table th,
 .history-table td {
-  padding: 16px;
+  padding: 16px 24px;
   text-align: left;
-  border-bottom: 1px solid var(--border-color);
 }
 
 .history-table th {
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   background-color: #F3F4F6;
   font-size: 0.9rem;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .history-table td {
   font-size: 0.95rem;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.history-table tr:last-child td {
+  border-bottom: none;
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.clickable-row:hover {
+  background-color: #F3F4F6;
 }
 
 .status-badge {

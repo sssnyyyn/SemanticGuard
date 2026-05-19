@@ -14,14 +14,11 @@ const QueryTester = ({ onQuerySuccess }) => {
     setLoading(true);
     setError(null);
     try {
-      // 벡엔드 의미론적 캐시 게이트웨이 호출
       const data = await api.post('/api/query', { query: queryText });
       setResult(data);
 
-      // 질문 필드 비우기 (지속적인 입력 테스트 편의를 위해 지우거나 남겨둘 수 있으나 지우도록 유도)
       setQueryText('');
 
-      // 대시보드 통계/이력 데이터의 실시간 동적 갱신을 트리거
       if (onQuerySuccess) {
         onQuerySuccess();
       }
@@ -39,7 +36,7 @@ const QueryTester = ({ onQuerySuccess }) => {
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <textarea
           className="query-input"
-          placeholder="여기에 AI 모델에 전송할 질문을 입력하고 게이트웨이의 성능을 실시간 확인해보세요."
+          placeholder="AI 모델에 전송할 질문을 입력하고 게이트웨이의 성능을 실시간 확인해보세요."
           value={queryText}
           onChange={(e) => setQueryText(e.target.value)}
           disabled={loading}
@@ -64,7 +61,7 @@ const QueryTester = ({ onQuerySuccess }) => {
           <div className="result-header">
             <span className="result-label">의미론적 필터 응답 결과</span>
             <span className={`status-badge ${result.is_cache_hit ? 'success' : 'failed'}`} style={{ fontWeight: 700 }}>
-              {result.is_cache_hit ? '⚡ Cache Hit' : '🌐 Cache Miss (API 호출)'}
+              {result.is_cache_hit ? '⚡ 캐시히트' : '🌐 API 호출'}
             </span>
           </div>
 

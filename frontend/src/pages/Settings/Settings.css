@@ -4,7 +4,6 @@
   gap: 24px;
 }
 
-/* 1열 1행 & 2행 Grid 배치 */
 .settings-grid-1row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -28,7 +27,6 @@
   line-height: 1.5;
 }
 
-/* 슬라이더 스타일 */
 .slider-wrapper {
   background-color: var(--bg-color);
   border-radius: 8px;
@@ -113,7 +111,6 @@
   color: var(--danger-color);
 }
 
-/* 로컬 임베딩 인덱스 모니터링 상세 스펙 */
 .index-monitor-specs {
   display: flex;
   flex-direction: column;
@@ -157,7 +154,6 @@
   font-family: Consolas, Monaco, monospace;
 }
 
-/* 위험 구역 경고 상자 */
 .warning-reset-section {
   border: 1px solid rgba(239, 68, 68, 0.2);
   background-color: rgba(239, 68, 68, 0.03);
@@ -203,7 +199,6 @@
   cursor: not-allowed;
 }
 
-/* 2열 하단: 업스트림 테이블 스타일링 (기존 테이블과 일관성 유지) */
 .upstream-table-wrapper {
   overflow-x: auto;
   border-radius: 8px;
@@ -218,7 +213,7 @@
 }
 
 .upstream-table th {
-  background-color: #F8FAFC; /* 기존 헤더와 일치하는 밝은 슬레이트 색상 */
+  background-color: #F8FAFC;
   color: var(--text-secondary);
   font-weight: 600;
   padding: 14px 18px;
@@ -262,7 +257,6 @@
   gap: 8px;
 }
 
-/* 영롱한 LED 인디케이터 */
 .status-indicator {
   width: 10px;
   height: 10px;
@@ -295,7 +289,6 @@
   color: #D97706;
 }
 
-/* 반응형 모바일 지원 */
 @media (max-width: 900px) {
   .settings-grid-1row {
     grid-template-columns: 1fr;
@@ -315,10 +308,12 @@
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
   }
+
   70% {
     transform: scale(1.05);
     box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
   }
+
   100% {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
@@ -330,10 +325,12 @@
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
   }
+
   70% {
     transform: scale(1.05);
     box-shadow: 0 0 0 6px rgba(245, 158, 11, 0);
   }
+
   100% {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);

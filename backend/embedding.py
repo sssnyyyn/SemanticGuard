@@ -10,7 +10,7 @@ def normalize_text(text: str) -> str:
     return text.strip().lower()
 
 def get_embedding(text: str) -> np.ndarray:
-    """구글 제미나이 고성능 실시간 임베딩 API를 활용한 벡터 추출 (768차원)"""
+    """구글 제미나이 실시간 임베딩 API를 활용한 벡터 추출"""
     normalized = normalize_text(text)
     
     gemini_key = os.getenv("GEMINI_API_KEY", "")
@@ -21,7 +21,7 @@ def get_embedding(text: str) -> np.ndarray:
         # Google GenAI 신형 SDK 임베딩 생성 방식 적용
         client = genai.Client(api_key=gemini_key)
         result = client.models.embed_content(
-            model="gemini-embedding-2",  # 회장님의 API 환경에서 공식 지원하는 최신 2세대 고성능 임베딩 모델 (3072차원)
+            model="gemini-embedding-2",
             contents=normalized
         )
         if result and result.embeddings:

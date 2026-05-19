@@ -57,10 +57,9 @@ const StatCards = ({ data }) => {
   return (
     <div className="stat-cards-grid">
       {stats.map((stat, index) => {
-        // 회장님의 황금 지시: + 기호가 있으면 무조건 초록색(positive), - 기호가 있으면 무조건 빨간색(negative)
         const hasPlus = stat.change.includes('+');
         const hasMinus = stat.change.includes('-');
-        
+
         let changeClass = 'neutral';
         if (hasPlus) {
           changeClass = 'positive';

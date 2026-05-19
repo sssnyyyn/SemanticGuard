@@ -4,6 +4,7 @@ import QueryTester from './QueryTester';
 import StatCards from './StatCards';
 import DashboardCharts from './DashboardCharts';
 import HistoryTable from './HistoryTable';
+import LogDetailModal from '../../components/common/LogDetailModal';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -11,6 +12,7 @@ const Dashboard = () => {
   const [charts, setCharts] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedLog, setSelectedLog] = useState(null);
 
   // 대시보드 모든 통계 및 시각화 데이터 비동기 일괄 조회
   const fetchDashboardData = async () => {
@@ -44,7 +46,8 @@ const Dashboard = () => {
       <QueryTester onQuerySuccess={handleQuerySuccess} />
       <StatCards data={stats} />
       <DashboardCharts chartsData={charts} />
-      <HistoryTable data={history} />
+      <HistoryTable data={history} onRowClick={setSelectedLog} />
+      <LogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />
     </div>
   );
 };

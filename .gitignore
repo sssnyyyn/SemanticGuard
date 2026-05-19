@@ -1,7 +1,3 @@
-# =========================================================================
-# SemanticGuard Git Ignore Configurations
-# =========================================================================
-
 # 1. User Troubleshooting Documents (Security & Local Only)
 troubleshooting.md
 troubleshooting_embedding.md
