@@ -28,11 +28,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
-origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:5174").split(",")
+# .env 파일의 CORS_ORIGINS 값만 100% 참조하여 연동하며, 누락 시 비인가 접근 차단(안전한 차단 정책 강제)
+cors_origins_env = os.getenv("CORS_ORIGINS", "").strip()
+if cors_origins_env:
+    origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+else:
+    origins = []
+    logger.warning("⚠️ 경고: .env 내 CORS_ORIGINS 설정이 누락되었습니다. 보안을 위해 비인가 외부 접속이 강제 차단 정책으로 설정됩니다.")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in origins],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -98,12 +104,67 @@ async def stats():
     total_cost_saved = sum(log.get("cost_saved", 0.0) for log in logs)
     avg_response_time = (sum(log.get("response_time", 0.0) for log in logs) / total_queries) if total_queries > 0 else 0.0
 
+    # --- 실시간 어제 vs 오늘 성과 분석 엔진 ---
+    from datetime import datetime, timedelta
+    now_dt = datetime.now()
+    today_str = now_dt.strftime("%Y.%m.%d")
+    yesterday_str = (now_dt - timedelta(days=1)).strftime("%Y.%m.%d")
+
+    today_logs = [log for log in logs if log.get("timestamp", "").startswith(today_str)]
+    yesterday_logs = [log for log in logs if log.get("timestamp", "").startswith(yesterday_str)]
+
+    t_queries = len(today_logs)
+    y_queries = len(yesterday_logs)
+
+    t_hits = sum(1 for log in today_logs if log.get("is_cache_hit", False))
+    y_hits = sum(1 for log in yesterday_logs if log.get("is_cache_hit", False))
+
+    t_latency = (sum(log.get("response_time", 0.0) for log in today_logs) / t_queries) if t_queries > 0 else 0.0
+    y_latency = (sum(log.get("response_time", 0.0) for log in yesterday_logs) / y_queries) if y_queries > 0 else 0.0
+
+    t_savings = sum(log.get("cost_saved", 0.0) for log in today_logs)
+    y_savings = sum(log.get("cost_saved", 0.0) for log in yesterday_logs)
+
+    # 1. 누적 질문량 증감율 (%)
+    if y_queries > 0:
+        q_pct = ((t_queries - y_queries) / y_queries) * 100
+        q_change = f"{'+' if q_pct >= 0 else ''}{q_pct:.1f}%"
+    else:
+        q_change = f"+{t_queries * 100.0:.1f}%" if t_queries > 0 else "0.0%"
+
+    # 2. 로컬 캐시 응답 증감율 (%)
+    if y_hits > 0:
+        h_pct = ((t_hits - y_hits) / y_hits) * 100
+        h_change = f"{'+' if h_pct >= 0 else ''}{h_pct:.1f}%"
+    else:
+        h_change = f"+{t_hits * 100.0:.1f}%" if t_hits > 0 else "0.0%"
+
+    # 3. 평균 반응 속도 단축율 (%)
+    if y_latency > 0 and t_latency > 0:
+        l_pct = ((t_latency - y_latency) / y_latency) * 100
+        l_change = f"{'+' if l_pct >= 0 else ''}{l_pct:.1f}%"
+    elif t_latency > 0 and y_latency == 0:
+        l_change = "+100.0%"
+    else:
+        l_change = "0.0%"
+
+    # 4. 실제 절감 비용 차이량 ($)
+    s_diff = t_savings - y_savings
+    s_change = f"{'+' if s_diff >= 0 else ''}${s_diff:.4f}"
+
     return {
         "cache_size": store_stats.get("total_vectors", 0),
         "queries_processed": total_queries,
+        "cache_hits": cache_hits,
         "total_cost_saved": round(total_cost_saved, 4),
         "avg_response_time": round(avg_response_time, 3),
-        "cache_hit_rate": round((cache_hits / total_queries * 100) if total_queries > 0 else 0.0, 1)
+        "cache_hit_rate": round((cache_hits / total_queries * 100) if total_queries > 0 else 0.0, 1),
+        "changes": {
+            "queries": q_change,
+            "hits": h_change,
+            "latency": l_change,
+            "savings": s_change
+        }
     }
 
 @app.get("/api/logs")
@@ -129,40 +190,177 @@ async def get_logs(query: Optional[str] = None, status: Optional[str] = None):
 
 @app.get("/api/charts")
 async def charts():
-    bar_data = [
-        {"name": "Jan", "cache": 0, "api": 2400},
-        {"name": "Feb", "cache": 3000, "api": 1398},
-        {"name": "Mar", "cache": 2000, "api": 9800},
-        {"name": "Apr", "cache": 2780, "api": 3908},
-        {"name": "May", "cache": 1890, "api": 4800},
-        {"name": "Jun", "cache": 2390, "api": 3800},
-        {"name": "Jul", "cache": 3490, "api": 0},
-    ]
-
     logs = await load_logs_async()
-    real_cache_hit = sum(1 for log in logs if log.get("is_cache_hit", False))
-    real_api_call = sum(1 for log in logs if not log.get("is_cache_hit", False))
+    from datetime import datetime, timedelta
 
-    bar_data[-1]["cache"] += real_cache_hit
-    bar_data[-1]["api"] += real_api_call
+    # 1. barData 동적 생성 (오늘 기준 최근 7일간의 일자별 캐시 히트 vs API 호출 집계)
+    today = datetime.now()
+    past_7_days = [(today - timedelta(days=i)).strftime("%m/%d") for i in range(6, -1, -1)]
+    
+    # 일자별 딕셔너리 초기화
+    day_counts = {day: {"cache": 0, "api": 0} for day in past_7_days}
+    
+    # 로그 데이터를 순회하며 최근 7일 통계 누적
+    for log in logs:
+        timestamp_str = log.get("timestamp", "")
+        try:
+            log_date = datetime.strptime(timestamp_str, "%Y.%m.%d %H:%M:%S").strftime("%m/%d")
+            if log_date in day_counts:
+                if log.get("is_cache_hit", False):
+                    day_counts[log_date]["cache"] += 1
+                else:
+                    day_counts[log_date]["api"] += 1
+        except Exception:
+            continue
 
-    line_data = [
-        {"time": "09:00", "latency": 45},
-        {"time": "12:00", "latency": 85},
-        {"time": "15:00", "latency": 40},
-        {"time": "18:00", "latency": 90},
+    bar_data = [
+        {"name": day, "cache": day_counts[day]["cache"], "api": day_counts[day]["api"]}
+        for day in past_7_days
     ]
 
-    if logs:
-        recent_latencies = [int(log.get("response_time", 0.0) * 1000) for log in logs[:4]]
-        for idx, lat in enumerate(recent_latencies):
-            if idx < len(line_data):
-                line_data[-(idx+1)]["latency"] = lat
+    # 2. lineData 동적 생성 (최근 발생한 최대 10개 쿼리의 실제 경과 지연시간 추이)
+    line_data = []
+    recent_logs = logs[:10]
+    recent_logs.reverse() # 시간 순서대로 정렬하기 위해 최근 로그 리스트 반전
+
+    for log in recent_logs:
+        timestamp_str = log.get("timestamp", "")
+        try:
+            log_time = datetime.strptime(timestamp_str, "%Y.%m.%d %H:%M:%S").strftime("%H:%M:%S")
+        except Exception:
+            log_time = "00:00:00"
+            
+        latency_ms = int(log.get("response_time", 0.0) * 1000)
+        line_data.append({
+            "time": log_time,
+            "latency": max(1, latency_ms) # 최소 1ms 보장
+        })
+
+    # 로그 데이터가 없는 극초기 상황에는 뷰 유지용 폴백 덤프 바인딩
+    if not line_data:
+        line_data = [
+            {"time": "09:00", "latency": 45},
+            {"time": "12:00", "latency": 85},
+            {"time": "15:00", "latency": 40},
+            {"time": "18:00", "latency": 90},
+        ]
 
     return {
         "barData": bar_data,
         "lineData": line_data
     }
+
+# 설정 모델 및 엔드포인트 추가 (동적 유사도 임계치 실시간 제어)
+class SettingsModel(BaseModel):
+    similarity_threshold: float
+
+SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "settings.json")
+
+@app.get("/api/settings")
+async def get_settings():
+    threshold = 0.75
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                settings = json.load(f)
+                threshold = float(settings.get("similarity_threshold", 0.75))
+        except Exception as e:
+            logger.error(f"설정 조회 중 에러 발생: {e}")
+            threshold = float(os.getenv("SIMILARITY_THRESHOLD", "0.75"))
+    else:
+        threshold = float(os.getenv("SIMILARITY_THRESHOLD", "0.75"))
+        
+    # cache.faiss 파일의 마지막 수정 시각 계산
+    faiss_path = os.getenv("FAISS_SAVE_PATH", "cache.faiss")
+    last_updated = "인덱스 생성 대기 중"
+    if os.path.exists(faiss_path):
+        try:
+            mtime = os.path.getmtime(faiss_path)
+            last_updated = datetime.fromtimestamp(mtime).strftime("%Y.%m.%d %H:%M:%S")
+        except Exception:
+            last_updated = "기록 오류"
+            
+    # 실제 logs.json으로부터 업스트림(API 호출) 평균 레이턴시 계산
+    avg_upstream_latency = "N/A"
+    try:
+        if os.path.exists(LOGS_FILE):
+            with open(LOGS_FILE, "r", encoding="utf-8") as f:
+                logs = json.load(f)
+            miss_times = [log.get("response_time", 0.0) for log in logs if not log.get("is_cache_hit", False)]
+            if miss_times:
+                # ms 단위로 표현
+                avg_upstream_latency = f"{int(sum(miss_times) / len(miss_times) * 1000)}ms"
+            else:
+                avg_upstream_latency = "1.25s (기본 대기)"
+    except Exception:
+        avg_upstream_latency = "1.25s (기본 대기)"
+        
+    from vector_store import store
+    
+    # 도커 배포 환경인지 환경 변수 등으로 정밀 판별
+    is_docker = os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER") is not None
+    env_str = "production (Docker Container)" if is_docker else "development (Local Host)"
+
+    return {
+        "similarity_threshold": threshold,
+        "faiss_save_path": faiss_path,
+        "embedding_model": "gemini-embedding-2 (3072차원)",
+        "llm_model": "gemini-2.5-flash",
+        "dimension": store.dimension,
+        "vector_count": store.index.ntotal,
+        "last_updated_at": last_updated,
+        "environment": env_str,
+        
+        # 업스트림 연결 상태 메타데이터
+        "upstream": {
+            "primary_endpoint": "Google Gemini API v1beta (gemini-2.5-flash)",
+            "fallback_endpoint": "Local Backup Server (gemma:2b via Ollama)",
+            "avg_latency": avg_upstream_latency,
+            "status": "active"
+        }
+    }
+
+@app.post("/api/settings")
+async def save_settings(payload: SettingsModel):
+    try:
+        val = payload.similarity_threshold
+        if val < 0.0 or val > 1.0:
+            raise HTTPException(status_code=400, detail="유사도 임계치는 0.0에서 1.0 사이여야 합니다.")
+        
+        settings = {"similarity_threshold": round(val, 2)}
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(settings, f, ensure_ascii=False, indent=2)
+        return {"status": "success", "settings": settings}
+    except Exception as e:
+        logger.error(f"설정 저장 중 에러 발생: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/cache/clear")
+async def clear_cache():
+    try:
+        from vector_store import store
+        # 1. FAISS 백엔드 벡터 완전 리셋
+        store.clear()
+        
+        # 2. logs.json 초기 데이터 시딩 복원 (더미 로그 복원 또는 비우기)
+        SEED_FILE = os.path.join(os.path.dirname(__file__), "seed_logs.json")
+        if os.path.exists(SEED_FILE):
+            try:
+                with open(SEED_FILE, "r", encoding="utf-8") as f:
+                    seed_data = json.load(f)
+                with open(LOGS_FILE, "w", encoding="utf-8") as f:
+                    json.dump(seed_data, f, ensure_ascii=False, indent=2)
+            except Exception:
+                with open(LOGS_FILE, "w", encoding="utf-8") as f:
+                    json.dump([], f)
+        else:
+            with open(LOGS_FILE, "w", encoding="utf-8") as f:
+                json.dump([], f)
+                
+        return {"status": "success", "message": "캐시 및 관제 시스템 로그가 안전하게 초기화되었습니다."}
+    except Exception as e:
+        logger.error(f"캐시 초기화 중 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"캐시 초기화 실패: {str(e)}")
 
 @app.get("/health")
 async def health():

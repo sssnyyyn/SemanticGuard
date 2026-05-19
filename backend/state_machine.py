@@ -28,47 +28,21 @@ def get_gemini_client():
 from embedding import get_embedding
 from vector_store import store
 
-# 로그 파일 경로
+# 로그 파일 경로 및 초기 시드 데이터 경로
 LOGS_FILE = os.path.join(os.path.dirname(__file__), "logs.json")
+SEED_LOGS_FILE = os.path.join(os.path.dirname(__file__), "seed_logs.json")
 
-# 초기 로그 데이터
+# 초기 로그 데이터 연동 (하드코딩 분리 및 seed_logs.json 외재화)
 def init_logs_file():
     if not os.path.exists(LOGS_FILE):
-        initial_logs = [
-            {
-                "id": 1,
-                "timestamp": "2026.05.18 14:00:31",
-                "query": "2026년 대한민국 경제 성장률 전망은?",
-                "response": "2026년 대한민국 경제 성장률은 글로벌 IT 경기 회복과 내수 회복세에 힘입어 약 2.2% 내외로 전망됩니다.",
-                "is_cache_hit": False,
-                "response_time": 1.45,
-                "similarity": 0.0,
-                "cost_saved": 0.0,
-                "status": "성공"
-            },
-            {
-                "id": 2,
-                "timestamp": "2026.05.18 14:03:45",
-                "query": "2026년 대한민국 경제 성장률 전망은?",
-                "response": "2026년 대한민국 경제 성장률은 글로벌 IT 경기 회복과 내수 회복세에 힘입어 약 2.2% 내외로 전망됩니다.",
-                "is_cache_hit": True,
-                "response_time": 0.008,
-                "similarity": 1.0,
-                "cost_saved": 0.005,
-                "status": "성공"
-            },
-            {
-                "id": 3,
-                "timestamp": "2026.05.18 14:15:22",
-                "query": "SemanticGuard의 핵심 기능과 장점을 설명해줘.",
-                "response": "SemanticGuard는 의미론적 캐싱 기술을 적용하여 무겁고 비용이 드는 LLM API 호출을 실시간으로 우회하고, 지연 속도를 100배 단축하며 비용을 최대 80% 이상 절감하는 차세대 캐시 게이트웨이 솔루션입니다.",
-                "is_cache_hit": False,
-                "response_time": 1.82,
-                "similarity": 0.0,
-                "cost_saved": 0.0,
-                "status": "성공"
-            }
-        ]
+        initial_logs = []
+        if os.path.exists(SEED_LOGS_FILE):
+            try:
+                with open(SEED_LOGS_FILE, "r", encoding="utf-8") as f:
+                    initial_logs = json.load(f)
+            except Exception as e:
+                print(f"시드 로그 파일 로드 중 실패: {e}")
+        
         with open(LOGS_FILE, "w", encoding="utf-8") as f:
             json.dump(initial_logs, f, ensure_ascii=False, indent=2)
 
@@ -112,6 +86,8 @@ class CacheState(TypedDict):
     response_time: float
     cost_saved: float
     start_time: float # 실행 시간 측정을 위한 보조 필드
+    prompt_tokens: Optional[int]      # 실제 입력 토큰 수
+    completion_tokens: Optional[int]  # 실제 출력 토큰 수
 
 # 1. 임베딩 추출 노드
 def embed_query_node(state: CacheState) -> CacheState:
@@ -126,8 +102,20 @@ def search_cache_node(state: CacheState) -> CacheState:
     embedding_array = np.array(state["embedding"], dtype=np.float32)
     similarity, cached_resp = store.search(embedding_array)
 
-    # 0.85(의미론적 유사 임계치) 기준 충족 시 캐시 히트 처리
-    if cached_resp is not None and similarity >= 0.75:
+    # settings.json 파일에서 실시간으로 threshold 읽기 (서버 재기동 없는 실시간 동적 반영)
+    SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "settings.json")
+    threshold = 0.75
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                settings = json.load(f)
+                threshold = float(settings.get("similarity_threshold", 0.75))
+        except Exception:
+            threshold = float(os.getenv("SIMILARITY_THRESHOLD", "0.75"))
+    else:
+        threshold = float(os.getenv("SIMILARITY_THRESHOLD", "0.75"))
+
+    if cached_resp is not None and similarity >= threshold:
         state["is_cache_hit"] = True
         state["cached_response"] = cached_resp
         state["similarity"] = similarity
@@ -140,6 +128,8 @@ def search_cache_node(state: CacheState) -> CacheState:
 def call_backend_node(state: CacheState) -> CacheState:
     query_text = state["query"]
     response = None
+    prompt_tokens = 0
+    completion_tokens = 0
 
     try:
         # Google Gemini API 클라이언트 지연 획득
@@ -150,17 +140,21 @@ def call_backend_node(state: CacheState) -> CacheState:
             model="gemini-2.5-flash",
             contents=query_text
         )
-
         
         if gemini_response and gemini_response.text:
             response = gemini_response.text.strip()
+            # API 응답에서 실제 사용된 토큰 정보 획득
+            if gemini_response.usage_metadata:
+                prompt_tokens = gemini_response.usage_metadata.prompt_token_count or 0
+                completion_tokens = gemini_response.usage_metadata.candidates_token_count or 0
         else:
             raise ValueError("Gemini API가 빈 응답을 반환했습니다.")
     except Exception as e:
         raise RuntimeError(f"Google Gemini API 호출 중 실시간 장애 발생: {e}")
 
-
     state["backend_response"] = response
+    state["prompt_tokens"] = prompt_tokens
+    state["completion_tokens"] = completion_tokens
 
     # 신규 쿼리 및 응답 쌍을 FAISS 벡터 저장소에 캐싱 추가
     embedding_array = np.array(state["embedding"], dtype=np.float32)
@@ -171,22 +165,35 @@ def call_backend_node(state: CacheState) -> CacheState:
 
 # 4. 성능 지표 및 비용 절감액 산출 노드
 def calculate_metrics_node(state: CacheState) -> CacheState:
+    # 1. 실제 지연 속도 연산 (시스템 타이머 기반 실제 경과 속도 적용)
     duration = time.time() - state["start_time"]
+    state["response_time"] = max(0.001, duration)
+
+    query_text = state["query"]
 
     if state["is_cache_hit"]:
-        # 캐시 히트 시 초고속 응답 속도 연출
-        state["response_time"] = duration if duration < 0.05 else 0.005 + (duration % 0.01)
-        state["cost_saved"] = 0.005  # 캐시 히트 당 평균 절감액 $0.005 달러
         final_response = state["cached_response"]
+        
+        # 2. 캐시 히트 시: 가상의 절감 비용 계산 (정밀 토큰 카운터 추정치 연동)
+        # 한국어 텍스트 특성을 감안해 공백 포함 글자 수 대비 입력 1.5배, 출력 2.0배 토큰 추정
+        predicted_prompt_tokens = max(1, int(len(query_text) * 1.5))
+        predicted_completion_tokens = max(1, int(len(final_response) * 2.0))
+        
+        # gemini-2.5-flash 공식 단가 적용
+        # Input: $0.075 / 1M tokens ($0.000000075 / token)
+        # Output: $0.30 / 1M tokens ($0.00000030 / token)
+        input_savings = predicted_prompt_tokens * 0.000000075
+        output_savings = predicted_completion_tokens * 0.00000030
+        state["cost_saved"] = input_savings + output_savings
     else:
-        # 캐시 미스 시 실시간 LLM 지연 속도 연출
-        state["response_time"] = duration if duration > 0.5 else 1.25 + (duration % 0.5)
-        state["cost_saved"] = 0.0
         final_response = state["backend_response"]
+        
+        # 3. 캐시 미스 시: 실제 LLM 비용이 소비되었으므로 절감액은 $0
+        state["cost_saved"] = 0.0
 
-    # 로그를 logs.json 파일에 비동기적으로(동기 차단 최소화) 저장
+    # 로그를 logs.json 파일에 실시간 저장
     save_log_entry(
-        query=state["query"],
+        query=query_text,
         response=final_response,
         is_cache_hit=state["is_cache_hit"],
         response_time=state["response_time"],

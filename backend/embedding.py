@@ -21,7 +21,7 @@ def get_embedding(text: str) -> np.ndarray:
         # Google GenAI 신형 SDK 임베딩 생성 방식 적용
         client = genai.Client(api_key=gemini_key)
         result = client.models.embed_content(
-            model="text-multilingual-embedding-002",  # 다국어/한국어 지원 및 v1beta 호환성 100% 모델
+            model="gemini-embedding-2",  # 회장님의 API 환경에서 공식 지원하는 최신 2세대 고성능 임베딩 모델 (3072차원)
             contents=normalized
         )
         if result and result.embeddings:

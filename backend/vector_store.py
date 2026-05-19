@@ -5,7 +5,7 @@ import pickle
 import os
 
 class FAISSVectorStore:
-    def __init__(self, dimension: int = 768, save_path: str = "cache.faiss"):
+    def __init__(self, dimension: int = 3072, save_path: str = "cache.faiss"):
         self.dimension = dimension
         self.index = faiss.IndexFlatL2(dimension)
         self.save_path = save_path
@@ -63,6 +63,28 @@ class FAISSVectorStore:
                 meta = pickle.load(f)
                 self.queries = meta.get("queries", [])
                 self.responses = meta.get("responses", {})
+
+    def clear(self) -> None:
+        """인덱스 및 매핑 데이터를 완전히 초기화하고 물리 파일 삭제"""
+        self.index = faiss.IndexFlatL2(self.dimension)
+        self.queries = []
+        self.responses = {}
+        
+        # 물리 파일 제거
+        if os.path.exists(self.save_path):
+            try:
+                os.remove(self.save_path)
+            except Exception:
+                pass
+        meta_path = self.save_path + ".meta"
+        if os.path.exists(meta_path):
+            try:
+                os.remove(meta_path)
+            except Exception:
+                pass
+        
+        # 빈 인덱스로 새로 저장
+        self.save()
 
     def get_stats(self) -> Dict:
         """통계"""

@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+    "timestamp": "2026.05.18 14:00:31",
+    "query": "2026년 대한민국 경제 성장률 전망은?",
+    "response": "2026년 대한민국 경제 성장률은 글로벌 IT 경기 회복과 내수 회복세에 힘입어 약 2.2% 내외로 전망됩니다.",
+    "is_cache_hit": false,
+    "response_time": 1.45,
+    "similarity": 0.0,
+    "cost_saved": 0.0,
+    "status": "성공"
+  },
+  {
+    "id": 2,
+    "timestamp": "2026.05.18 14:03:45",
+    "query": "2026년 대한민국 경제 성장률 전망은?",
+    "response": "2026년 대한민국 경제 성장률은 글로벌 IT 경기 회복과 내수 회복세에 힘입어 약 2.2% 내외로 전망됩니다.",
+    "is_cache_hit": true,
+    "response_time": 0.008,
+    "similarity": 1.0,
+    "cost_saved": 0.005,
+    "status": "성공"
+  },
+  {
+    "id": 3,
+    "timestamp": "2026.05.18 14:15:22",
+    "query": "SemanticGuard의 핵심 기능과 장점을 설명해줘.",
+    "response": "SemanticGuard는 의미론적 캐싱 기술을 적용하여 무겁고 비용이 드는 LLM API 호출을 실시간으로 우회하고, 지연 속도를 100배 단축하며 비용을 최대 80% 이상 절감하는 차세대 캐시 게이트웨이 솔루션입니다.",
+    "is_cache_hit": false,
+    "response_time": 1.82,
+    "similarity": 0.0,
+    "cost_saved": 0.0,
+    "status": "성공"
+  }
+]
