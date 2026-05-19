@@ -75,8 +75,7 @@ SemanticGuard/
 │   ├── package.json
 │   └── vite.config.js
 ├── docker-compose.yml        # Docker 통합 배포용 파일
-├── .env.example              # 환경 설정 템플릿
-└── semantic_cache_gateway_prd.md # 상세 제품 요구사항 정의서 (PRD)
+└── .env.example              # 환경 설정 템플릿
 ```
 
 ---
