@@ -7,10 +7,8 @@ const api = axios.create({
   },
 });
 
-// Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Modify config before request is sent
     return config;
   },
   (error) => {
@@ -18,7 +16,6 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor
 api.interceptors.response.use(
   (response) => {
     return response.data;

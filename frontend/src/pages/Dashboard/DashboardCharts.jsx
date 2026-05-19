@@ -1,7 +1,7 @@
 import React from 'react';
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line 
+  LineChart, Line
 } from 'recharts';
 
 // 모의 데이터 (Mock Data)
@@ -38,14 +38,14 @@ const DashboardCharts = ({ chartsData }) => {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
               <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
-              <Tooltip 
-                cursor={{fill: '#F3F4F6'}} 
+              <Tooltip
+                cursor={{fill: '#F3F4F6'}}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
               />
               <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }}/>
-              {/* 캐시 히트 (왼쪽 막대) */}
+              {/* 캐시 히트 */}
               <Bar dataKey="cache" name="캐시 히트" fill="#E5E7EB" barSize={12} radius={[4, 4, 0, 0]} />
-              {/* API 호출 (오른쪽 막대) */}
+              {/* API 호출 */}
               <Bar dataKey="api" name="API 호출" fill="#DE7B63" barSize={12} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -63,7 +63,7 @@ const DashboardCharts = ({ chartsData }) => {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
               <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
               <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
               />
               <Line type="monotone" dataKey="latency" name="응답 속도 (ms)" stroke="#DE7B63" strokeWidth={3} dot={{ r: 4, fill: '#DE7B63', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />

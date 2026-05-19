@@ -17,10 +17,10 @@ const QueryTester = ({ onQuerySuccess }) => {
       // 벡엔드 의미론적 캐시 게이트웨이 호출
       const data = await api.post('/api/query', { query: queryText });
       setResult(data);
-      
+
       // 질문 필드 비우기 (지속적인 입력 테스트 편의를 위해 지우거나 남겨둘 수 있으나 지우도록 유도)
       setQueryText('');
-      
+
       // 대시보드 통계/이력 데이터의 실시간 동적 갱신을 트리거
       if (onQuerySuccess) {
         onQuerySuccess();
@@ -37,24 +37,24 @@ const QueryTester = ({ onQuerySuccess }) => {
     <div className="card-box query-tester-card">
       <h2 className="section-title">실시간 쿼리 테스터</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <textarea 
-          className="query-input" 
+        <textarea
+          className="query-input"
           placeholder="여기에 AI 모델에 전송할 질문을 입력하고 게이트웨이의 성능을 실시간 확인해보세요."
           value={queryText}
           onChange={(e) => setQueryText(e.target.value)}
           disabled={loading}
         ></textarea>
-        
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {error && <span style={{ color: 'var(--danger-color)', fontSize: '0.9rem', fontWeight: 500 }}>{error}</span>}
           {!error && <span style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem' }}>* 동일하거나 유사한 질문 시 캐시가 즉시 작동합니다.</span>}
-          <button 
-            type="submit" 
-            className="query-submit-btn" 
+          <button
+            type="submit"
+            className="query-submit-btn"
             disabled={loading || !queryText.trim()}
             style={{ opacity: loading || !queryText.trim() ? 0.6 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
           >
-            {loading ? '전송 및 캐싱 분석 중...' : '질문 전송'}
+            {loading ? '전송 및 캐싱 분석 중.' : '질문 전송'}
           </button>
         </div>
       </form>
@@ -67,11 +67,11 @@ const QueryTester = ({ onQuerySuccess }) => {
               {result.is_cache_hit ? '⚡ Cache Hit' : '🌐 Cache Miss (API 호출)'}
             </span>
           </div>
-          
+
           <div className="result-content">
             {result.response}
           </div>
-          
+
           <div className="metrics-grid">
             <div className="metric-box">
               <div className="metric-label">지연 시간 (Latency)</div>

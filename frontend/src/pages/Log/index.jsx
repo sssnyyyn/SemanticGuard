@@ -8,7 +8,6 @@ const Log = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 백엔드 엔드포인트로부터 상세 로그 조회 및 필터링 적용
   const fetchLogs = async () => {
     setLoading(true);
     try {
@@ -38,35 +37,35 @@ const Log = () => {
   return (
     <div className="log-container">
       <h2 className="section-title">상세 로그 조회</h2>
-      
+
       {/* 검색 필터 카드 */}
       <form onSubmit={handleSearchSubmit} className="card-box filter-card">
         <div className="filter-group">
           <label className="filter-label">검색어 입력</label>
-          <input 
-            type="text" 
-            placeholder="쿼리 내용 혹은 답변 검색..." 
+          <input
+            type="text"
+            placeholder="쿼리 내용 혹은 답변 검색."
             className="filter-input"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        
+
         <div className="filter-group">
           <label className="filter-label">기간 설정</label>
           <div className="filter-input-wrapper">
-            <input 
-              type="text" 
-              value="2026.05.11 ~ 2026.05.18" 
-              readOnly 
+            <input
+              type="text"
+              value="2026.05.11 ~ 2026.05.18"
+              readOnly
               className="filter-input readonly-input"
             />
           </div>
         </div>
-        
+
         <div className="filter-group">
           <label className="filter-label">상태 필터</label>
-          <select 
+          <select
             className="filter-select"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -78,12 +77,12 @@ const Log = () => {
             <option value="API호출">API호출 (Cache Miss)</option>
           </select>
         </div>
-        
+
         <button type="submit" className="search-button" disabled={loading}>
-          {loading ? '조회 중...' : '검색'}
+          {loading ? '조회 중..' : '검색'}
         </button>
       </form>
-      
+
       {/* 로그 데이터 테이블 */}
       <div className="card-box log-table-card">
         <div className="log-table-container">
@@ -102,7 +101,7 @@ const Log = () => {
               {loading ? (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-tertiary)' }}>
-                    상세 로그를 로드하고 있습니다...
+                    상세 로그를 로드하고 있습니다.
                   </td>
                 </tr>
               ) : logs.length === 0 ? (

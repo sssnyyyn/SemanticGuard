@@ -20,7 +20,6 @@ app = FastAPI(
 )
 
 # CORS(교차 출처 리소스 공유) 설정
-# 프론트엔드 도메인을 환경 변수에서 읽어오며, 기본값으로 로컬 개발 환경(Vite, CRA) 포트 지정
 origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:5174").split(",")
 
 app.add_middleware(
@@ -57,7 +56,6 @@ def load_logs():
 
 @app.post("/api/query", response_model=QueryResponse)
 async def query(request: QueryRequest):
-    """의미론적 캐시 게이트웨이 주요 처리 엔드포인트"""
     # LangGraph 상태 머신 비동기 실행 (ainvoke)
     # 초기 상태(CacheState)를 정의하여 파이프라인에 주입
     result = await cache_graph.ainvoke(CacheState(
@@ -87,14 +85,14 @@ async def stats():
     """대시보드 통계를 위한 실제 통계 산출 엔드포인트"""
     logs = load_logs()
     store_stats = store.get_stats()
-    
+
     total_queries = len(logs)
     cache_hits = sum(1 for log in logs if log.get("is_cache_hit", False))
     total_cost_saved = sum(log.get("cost_saved", 0.0) for log in logs)
-    
+
     # 평균 응답 시간 계산 (캐시 히트 및 캐시 미스 모두 포함)
     avg_response_time = (sum(log.get("response_time", 0.0) for log in logs) / total_queries) if total_queries > 0 else 0.0
-    
+
     return {
         "cache_size": store_stats["total_vectors"],
         "queries_processed": total_queries,
@@ -107,12 +105,12 @@ async def stats():
 async def get_logs(query: Optional[str] = None, status: Optional[str] = None):
     """상세 로그 조회를 위한 검색 및 필터링 엔드포인트"""
     logs = load_logs()
-    
+
     filtered_logs = logs
     if query:
         query_lower = query.lower()
         filtered_logs = [log for log in filtered_logs if query_lower in log.get("query", "").lower() or query_lower in log.get("response", "").lower()]
-        
+
     if status and status != "전체":
         if status == "성공":
             filtered_logs = [log for log in filtered_logs if log.get("status") == "성공"]
@@ -122,7 +120,7 @@ async def get_logs(query: Optional[str] = None, status: Optional[str] = None):
             filtered_logs = [log for log in filtered_logs if log.get("is_cache_hit", False)]
         elif status == "API호출":
             filtered_logs = [log for log in filtered_logs if not log.get("is_cache_hit", False)]
-            
+
     return filtered_logs
 
 @app.get("/api/charts")
@@ -139,12 +137,12 @@ async def charts():
         {"name": "Jun", "cache": 2390, "api": 3800},
         {"name": "Jul", "cache": 3490, "api": 0},
     ]
-    
+
     # 최근 유입 로그의 개수를 계산하여 차트의 마지막 달(7월) 캐시 및 API에 가산
     logs = load_logs()
     real_cache_hit = sum(1 for log in logs if log.get("is_cache_hit", False))
     real_api_call = sum(1 for log in logs if not log.get("is_cache_hit", False))
-    
+
     bar_data[-1]["cache"] += real_cache_hit
     bar_data[-1]["api"] += real_api_call
 
@@ -155,11 +153,10 @@ async def charts():
         {"time": "15:00", "latency": 40},
         {"time": "18:00", "latency": 90},
     ]
-    
+
     if logs:
         # 최근 4개 로그의 응답 속도 밀리초 단위를 가져와 트렌드에 반영
         recent_latencies = [int(log.get("response_time", 0.0) * 1000) for log in logs[:4]]
-        # 기존 모의 데이터에 덮어써서 실시간성을 보여줍니다
         for idx, lat in enumerate(recent_latencies):
             if idx < len(line_data):
                 line_data[-(idx+1)]["latency"] = lat

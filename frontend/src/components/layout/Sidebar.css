@@ -163,7 +163,7 @@
 .user-name {
   font-weight: 600;
   font-size: 0.95rem;
-  color: white; /* image shows light text on dark or dark on light, actually the profile card in the image has a light purple/gray bg and white text on the avatar, dark text on name. Wait, the image shows a gray bg for the profile card, white text on name? No, it's a gray background with white text, or is it just light gray bg with dark text? I'll make it dark text */
+  color: white;
   color: var(--text-primary);
 }
 
