@@ -1,62 +1,148 @@
-# 📘 Semantic Cache Gateway for AI
+<div align="center">
 
-의미론적 유사도 기반 AI 응답 캐싱 게이트웨이 프로젝트입니다. 기존의 정확한 텍스트 매칭에서 벗어나, 입력 쿼리의 **의미적 유사성**을 파악해 OpenAI 등 고비용/고지연 API의 반복 호출을 최소화합니다.
+# 🛡️ SemanticGuard
 
-## ✨ 핵심 기능
-- **LangChain & all-MiniLM-L6-v2**: 사용자 질문의 의미론적 벡터 임베딩 생성 (100ms 이내)
-- **FAISS 벡터 검색**: 이전 질의 벡터와의 코사인 유사도 연산을 통한 캐시 히트(Cache-Hit) 판단
-- **LangGraph 상태 머신**: 캐시 히트/미스 분기 논리 및 상태 관리 최적화
-- **FastAPI 게이트웨이**: 비동기 처리가 가능한 경량 프록시 서버
-- **React(Vite) 대시보드**: 캐싱 통계 및 실시간 응답 시각화 
+**의미론적 유사도 기반 AI 응답 캐싱 게이트웨이 플랫폼**
+
+정확한 텍스트 매칭 한계를 넘어, 질문의 의도와 문맥을 분석하여 고비용/고지연 LLM API 호출을 최소화하는 지능형 프록시 게이트웨이입니다.
+
+[![React](https://img.shields.io/badge/Frontend-React_18-61DAFB?style=flat-square&logo=react&logoColor=black)](./frontend)
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](./backend)
+[![FAISS](https://img.shields.io/badge/Vector_DB-FAISS-blue?style=flat-square)](https://github.com/facebookresearch/faiss)
+[![LangGraph](https://img.shields.io/badge/Framework-LangGraph-orange?style=flat-square)](https://github.com/langchain-ai/langgraph)
+
+</div>
+
+---
+
+## 🖥️ 서비스 화면
+
+| 📊 Home (대시보드) | 📑 Log (상세 이력) | ⚙️ System Setting (시스템 설정) |
+|:---:|:---:|:---:|
+| ![Home 대시보드](./docs/images/home.png) | ![Log 상세이력](./docs/images/log.png) | ![System Setting 설정](./docs/images/settings.png) |
+| 실시간 캐시 적중률, 레이턴시 절감율 차트 및 쿼리 테스터 제공 | 최근 7일간의 캐시 검증 이력 필터링 및 상세 질문 텍스트 검색 | 캐시 민감도 임계치(Threshold) 제어 및 FAISS 인덱스 리셋 |
+
+---
+
+## 🌟 핵심 기능
+
+| 기능 | 설명 |
+|------|------|
+| **지능형 의미론적 캐싱** | `gemini-embedding-2` 다국어 모델로 한국어 질문의 의도를 분석해, 형태가 달라도 의미가 유사하면 즉시 캐시 응답을 반환합니다. |
+| **LangGraph 상태 제어** | 임베딩 ➡️ 캐시 검색 ➡️ (미스 시) 백엔드 LLM 호출 ➡️ 지표 산출의 전 과정을 LangGraph 상태 머신으로 안정되게 통제합니다. |
+| **비동기 고성능 게이트웨이** | FastAPI 비동기 통신과 `run_in_threadpool`을 활용한 CPU-Bound 연산 분리로 동시 요청 처리 성능을 극대화합니다. |
+| **비동기 파일 아카이빙** | `aiofiles` 기반의 파일 I/O 처리를 통해 대시보드의 실시간 통계 조회와 캐시 적적 시 입출력 병목 현상을 방지합니다. |
+| **실시간 임계치 조정** | 설정 화면의 슬라이더 조정을 통해 캐시 적중의 민감도(Threshold)를 0%~100% 범위에서 실시간 동적으로 갱신합니다. |
+| **SMTP 1:1 문의 연동** | 관리자(happy08164@naver.com)에게 접수되는 메일 문의 시스템을 탑재하고, SMTP 계정 장애 시 자동 Mock 우회 설계를 적용했습니다. |
+
+---
+
+## 🛠️ 기술 스택
+
+### Frontend
+* **Core**: React 18, Vite
+* **State & Router**: React Router DOM v6
+* **Visuals**: Recharts (실시간 트래픽 및 레이턴시 변화 추적)
+* **Styling**: Vanilla CSS (sleek dark mode 테마)
+
+### Backend
+* **Web Framework**: FastAPI, Uvicorn, AnyIO
+* **Orchestration**: LangGraph, LangChain Core
+* **Embedding API**: Google GenAI SDK (gemini-embedding-2, 3072차원)
+* **Vector Store**: FAISS (IndexFlatL2)
+* **Concurrency Utilities**: aiofiles, Starlette Concurrency Threadpool
+
+---
 
 ## 📂 프로젝트 구조
 
 ```
 SemanticGuard/
-├── backend/                # FastAPI 기반 캐시 게이트웨이
-│   ├── main.py             # 라우팅 및 API 엔드포인트
-│   ├── embedding.py        # 텍스트 임베딩 모델 파이프라인
-│   ├── vector_store.py     # FAISS 기반 메모리/디스크 벡터 저장소
-│   ├── state_machine.py    # LangGraph 제어 흐름
+├── backend/                  # FastAPI 백엔드 게이트웨이
+│   ├── main.py               # API 라우팅, 실시간 통계 산출 및 비동기 엔드포인트
+│   ├── embedding.py          # Google GenAI SDK 기반 임베딩 및 정규화 체인
+│   ├── vector_store.py       # FAISS IndexFlatL2 벡터 저장소 매핑 및 로컬 로더
+│   ├── state_machine.py      # LangGraph 기반 캐싱 생명주기 제어 흐름
 │   ├── Dockerfile
-│   └── requirements.txt
-├── frontend/               # Vite + React 대시보드 (Day 2 구현 예정 포함)
-├── docker-compose.yml      # 로컬 개발 및 배포 통합용 컴포즈 파일
-├── .env.example            # 환경변수 템플릿
-└── semantic_cache_gateway_prd.md # 상세 PRD 문서
+│   └── requirements.txt      # 최신 안정화 라이브러리 목록
+├── frontend/                 # React (Vite) 모니터링 대시보드
+│   ├── src/
+│   │   ├── components/       # 헤더, 사이드바, 1:1 문의사항 모달 프레임
+│   │   ├── pages/            # Dashboard(Home), Log, Settings(System Setting)
+│   │   ├── services/         # Axios 기반 API 연동 클라이언트 (api.js)
+│   │   └── App.jsx           # 라우팅 및 테마 진입점
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.js
+├── docker-compose.yml        # Docker 통합 배포용 파일
+├── .env.example              # 환경 설정 템플릿
+├── semantic_cache_gateway_prd.md # 상세 제품 요구사항 정의서 (PRD)
+└── troubleshooting.md        # 통합 트러블슈팅 문서
 ```
 
-## 🚀 빠른 시작
+---
 
-### 1. 환경 설정
+## 🧠 핵심 기술 구현
+
+### LangGraph 캐시 분기 라우팅
+유사도 검색 점수 결과를 바탕으로 캐시 적중 여부를 판별하여, 캐시 히트 시 즉시 응답 노드로 분기하고 미스 시 업스트림 LLM을 호출하는 상태 그래프를 구현했습니다.
+
+```python
+# backend/state_machine.py
+def route_cache(state: CacheState) -> str:
+    """유사도 점수를 기준으로 캐시 히트/미스 분기 라우팅"""
+    score = state.get("similarity_score", 0.0)
+    threshold = state.get("threshold", 0.75)
+    
+    if score >= threshold:
+        return "calculate_metrics"  # 캐시 히트: 즉시 응답 반환 및 지표 업데이트
+    else:
+        return "call_backend"       # 캐시 미스: 업스트림 LLM 서버 호출
+```
+
+---
+
+## 🛠️ 트러블슈팅 요약
+시스템 개발 중 극복한 주요 이슈들은 다음과 같으며, 상세 분석은 [통합 트러블슈팅 리포트](./troubleshooting.md)에서 확인하실 수 있습니다.
+
+* **LangGraph KeyError: `__start__` 해결**: 라이브러리 간 버전 불일치를 확인하고 코어 패키지 버전을 정합성 있게 상향 조정하여 해결.
+* **한국어 지명 유사도 인식 및 0벡터 오염 해소**: `gemini-embedding-2` API(3072차원)로 업그레이드하여 형태소가 다른 지명의 혼동을 제거하고, 0벡터 발생 시 시스템 다운 방지 로직 구축.
+* **이벤트 루프 대기 해결**: FAISS/LangGraph 연산을 `run_in_threadpool`로 할당하여 FastAPI 스레드가 고착되는 현상 해결.
+* **디스크 동시성 병목 방지**: `logs.json` 입출력 시 `aiofiles` 비동기 스트림을 도입하여 대시보드 리로드렉 제거.
+
+---
+
+## 🚀 로컬 실행 방법
+
+### 사전 요구사항
+* Node.js 18+
+* Python 3.10+
+* Google Gemini API Key
+
+### 1. 저장소 클론 및 환경 설정
 ```bash
+git clone https://github.com/sssnyyyn/SemanticGuard.git
+cd SemanticGuard
 cp .env.example .env
-# .env 파일에 필요한 설정을 업데이트 (필요 시 OPENAI_API_KEY 입력)
+# .env 파일 내 GEMINI_API_KEY 및 SMTP 계정 정보 기입
 ```
 
-### 2. Docker Compose 배포
-```bash
-docker-compose up --build -d
-```
-- **Backend API**: `http://localhost:8000/docs`
-- **Frontend Dashboard**: `http://localhost:5173`
-
-### 3. 로컬 직접 실행 (Backend)
+### 2. 백엔드 실행
 ```bash
 cd backend
 pip install -r requirements.txt
-uvicorn main:app --reload
+python -m uvicorn main:app --reload --port 8000
 ```
+* **백엔드 API 문서**: `http://localhost:8000/docs`
 
-## 📈 테스트 (cURL)
+### 3. 프론트엔드 실행
 ```bash
-# 초기 요청 (Cache Miss 예상, 지연 발생)
-curl -X POST http://localhost:8000/api/query \
-  -H "Content-Type: application/json" \
-  -d '{"query": "서울의 오늘 날씨는 어떤가요?"}'
-
-# 유사한 요청 (Cache Hit 예상, 즉시 반환)
-curl -X POST http://localhost:8000/api/query \
-  -H "Content-Type: application/json" \
-  -d '{"query": "현재 서울 날씨 어때?"}'
+cd ../frontend
+npm install
+npm run dev
 ```
+* **프론트엔드 대시보드**: `http://localhost:5173`
+
+---
+
+**보좌관 자비스 기안 및 실행.**
