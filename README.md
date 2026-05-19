@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛡️ SemanticGuard
+# SemanticGuard
 
 **의미론적 유사도 기반 AI 응답 캐싱 게이트웨이 플랫폼**
 
@@ -15,7 +15,7 @@
 
 ---
 
-## 🖥️ 서비스 화면
+## 서비스 화면
 
 | 📊 Home (대시보드) | 📑 Log (상세 이력) | ⚙️ System Setting (시스템 설정) |
 |:---:|:---:|:---:|
@@ -24,7 +24,7 @@
 
 ---
 
-## 🌟 핵심 기능
+## 핵심 기능
 
 | 기능 | 설명 |
 |------|------|
@@ -37,7 +37,7 @@
 
 ---
 
-## 🛠️ 기술 스택
+## 기술 스택
 
 ### Frontend
 * **Core**: React 18, Vite
@@ -54,7 +54,7 @@
 
 ---
 
-## 📂 프로젝트 구조
+## 프로젝트 구조
 
 ```
 SemanticGuard/
@@ -81,27 +81,26 @@ SemanticGuard/
 
 ---
 
-## 🧠 핵심 기술 구현
+## 핵심 기술 구현
 
 ### LangGraph 캐시 분기 라우팅
 유사도 검색 점수 결과를 바탕으로 캐시 적중 여부를 판별하여, 캐시 히트 시 즉시 응답 노드로 분기하고 미스 시 업스트림 LLM을 호출하는 상태 그래프를 구현했습니다.
 
 ```python
-# backend/state_machine.py
 def route_cache(state: CacheState) -> str:
     """유사도 점수를 기준으로 캐시 히트/미스 분기 라우팅"""
     score = state.get("similarity_score", 0.0)
     threshold = state.get("threshold", 0.75)
     
     if score >= threshold:
-        return "calculate_metrics"  # 캐시 히트: 즉시 응답 반환 및 지표 업데이트
+        return "calculate_metrics"
     else:
-        return "call_backend"       # 캐시 미스: 업스트림 LLM 서버 호출
+        return "call_backend"
 ```
 
 ---
 
-## 🛠️ 트러블슈팅 요약
+## 트러블슈팅 요약
 시스템 개발 및 실전 고도화 과정에서 분석하고 예방 조치한 기술적 문제 해결(Troubleshooting) 핵심 요약입니다.
 
 * **LangGraph KeyError: `__start__` 해결**: 라이브러리 간 버전 불일치를 확인하고 코어 패키지 버전을 정합성 있게 상향 조정하여 해결.
@@ -109,7 +108,7 @@ def route_cache(state: CacheState) -> str:
 * **이벤트 루프 대기 해결**: FAISS/LangGraph 연산을 `run_in_threadpool`로 할당하여 FastAPI 스레드가 고착되는 현상 해결.
 * **디스크 동시성 병목 방지**: `logs.json` 입출력 시 `aiofiles` 비동기 스트림을 도입하여 대시보드 리로드렉 제거.
 
-## 🐳 Docker Compose 배포 방법 (Nginx 정적 서빙)
+## Docker Compose 배포 방법 (Nginx 정적 서빙)
 
 Docker Compose를 활용하여 컨테이너 환경에서 전체 서비스를 가동하는 절차입니다. 프론트엔드는 Nginx를 통해 80번 포트로 안전하게 서빙됩니다.
 
@@ -117,7 +116,6 @@ Docker Compose를 활용하여 컨테이너 환경에서 전체 서비스를 가
 로컬 루트 디렉토리에 `.env` 파일을 생성하고 구글 Gemini API Key 및 필요한 계정 정보를 기입합니다. (동일하게 백엔드 컨테이너에 주입됩니다.)
 ```bash
 cp .env.example .env
-# .env 파일 편집
 ```
 
 ### 2. 컨테이너 빌드 및 백그라운드 실행
@@ -131,7 +129,7 @@ docker-compose up --build -d
 
 ---
 
-## 🚀 로컬 실행 방법
+## 로컬 실행 방법
 
 ### 사전 요구사항
 * Node.js 18+
@@ -143,7 +141,6 @@ docker-compose up --build -d
 git clone https://github.com/sssnyyyn/SemanticGuard.git
 cd SemanticGuard
 cp .env.example .env
-# .env 파일 내 GEMINI_API_KEY 및 SMTP 계정 정보 기입
 ```
 
 ### 2. 백엔드 실행
