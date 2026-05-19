@@ -4,7 +4,25 @@ import os
 from typing import TypedDict, List, Optional
 import numpy as np
 from datetime import datetime
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, START, END
+
+from google import genai
+
+# Google Gemini API 클라이언트 지연 초기화(Lazy Initialization) 함수
+client = None
+
+def get_gemini_client():
+    global client
+    if client is not None:
+        return client
+    
+    gemini_key = os.getenv("GEMINI_API_KEY", "")
+    if not gemini_key or gemini_key == "your_actual_gemini_api_key_here":
+        raise ValueError("Google Gemini API 키(GEMINI_API_KEY)가 .env 파일에 설정되어 있지 않습니다. 실시간 API 연동을 위해 키를 입력해 주십시오.")
+    
+    client = genai.Client(api_key=gemini_key)
+    return client
+
 
 # 내부 모듈 임포트
 from embedding import get_embedding
@@ -109,7 +127,7 @@ def search_cache_node(state: CacheState) -> CacheState:
     similarity, cached_resp = store.search(embedding_array)
 
     # 0.85(의미론적 유사 임계치) 기준 충족 시 캐시 히트 처리
-    if cached_resp is not None and similarity >= 0.85:
+    if cached_resp is not None and similarity >= 0.75:
         state["is_cache_hit"] = True
         state["cached_response"] = cached_resp
         state["similarity"] = similarity
@@ -121,16 +139,26 @@ def search_cache_node(state: CacheState) -> CacheState:
 # 3. 실시간 LLM 백엔드 호출 노드 (캐시 미스 시 구동)
 def call_backend_node(state: CacheState) -> CacheState:
     query_text = state["query"]
+    response = None
 
-    # 똑똑하고 정형화된 고품질 시나리오 모의 생성기
-    if "성장률" in query_text or "경제" in query_text:
-        response = "2026년 대한민국 경제 성장률은 글로벌 IT 경기 회복과 내수 회복세에 힘입어 약 2.2% 내외로 전망됩니다."
-    elif "비용" in query_text or "절감" in query_text or "장점" in query_text:
-        response = "SemanticGuard의 의미론적 캐싱 기술 도입 시, LLM API 토큰 비용을 최대 80% 이상 절감할 수 있으며 응답 속도를 100배 이상 단축할 수 있습니다."
-    elif "설정" in query_text or "시스템" in query_text:
-        response = "SemanticGuard 시스템 설정에서는 임계값(Threshold), 모델 선택, FAISS 차원 설정 및 시스템 관리자 자격 증명 등을 안전하게 세팅할 수 있습니다."
-    else:
-        response = f"'{query_text}'에 대한 실시간 LLM 백엔드 분석 결과입니다. 의미론적 보안 캐시 필터를 안전하게 통과하여 성공적으로 답변이 생성되었습니다."
+    try:
+        # Google Gemini API 클라이언트 지연 획득
+        gemini_client = get_gemini_client()
+        
+        # 신형 SDK 방식의 모델 호출 (최신 gemini-2.5-flash 모델 적용)
+        gemini_response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=query_text
+        )
+
+        
+        if gemini_response and gemini_response.text:
+            response = gemini_response.text.strip()
+        else:
+            raise ValueError("Gemini API가 빈 응답을 반환했습니다.")
+    except Exception as e:
+        raise RuntimeError(f"Google Gemini API 호출 중 실시간 장애 발생: {e}")
+
 
     state["backend_response"] = response
 
@@ -138,6 +166,8 @@ def call_backend_node(state: CacheState) -> CacheState:
     embedding_array = np.array(state["embedding"], dtype=np.float32)
     store.add(embedding_array, query_text, response)
     return state
+
+
 
 # 4. 성능 지표 및 비용 절감액 산출 노드
 def calculate_metrics_node(state: CacheState) -> CacheState:
@@ -174,7 +204,7 @@ workflow.add_node("call_backend", call_backend_node)
 workflow.add_node("calculate_metrics", calculate_metrics_node)
 
 # 엔트리 포인트 및 흐름 연결
-workflow.set_entry_point("embed_query")
+workflow.add_edge(START, "embed_query")
 workflow.add_edge("embed_query", "search_cache")
 
 # 캐시 히트 여부에 따른 조건부 라우팅

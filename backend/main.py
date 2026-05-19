@@ -1,16 +1,25 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 import json
+import uuid
+import logging
+import aiofiles
 from typing import Optional
 from dotenv import load_dotenv
 
-# 내부 모듈 임포트 (상태 관리 로직 및 벡터 저장소)
 from state_machine import cache_graph, CacheState
 from vector_store import store
+from fastapi.concurrency import run_in_threadpool
 
-# 환경 변수 로드 (.env 파일 적용)
+# 1. 시스템 로깅 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 
 app = FastAPI(
@@ -19,22 +28,19 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS(교차 출처 리소스 공유) 설정
 origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:5174").split(",")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in origins],
     allow_credentials=True,
-    allow_methods=["*"], # 모든 HTTP 메서드 허용 (GET, POST 등)
-    allow_headers=["*"], # 모든 HTTP 헤더 허용
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# 클라이언트 요청 데이터 검증을 위한 Pydantic 모델 정의
 class QueryRequest(BaseModel):
     query: str
 
-# API 응답 데이터 규격을 위한 Pydantic 모델 정의
 class QueryResponse(BaseModel):
     response: str
     is_cache_hit: bool
@@ -42,59 +48,58 @@ class QueryResponse(BaseModel):
     similarity: float
     cost_saved: float
 
-# 로그 파일 경로
 LOGS_FILE = os.path.join(os.path.dirname(__file__), "logs.json")
 
-def load_logs():
-    if os.path.exists(LOGS_FILE):
-        try:
-            with open(LOGS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return []
-    return []
+# 2. 비동기 파일 읽기 적용 (Event Loop 블로킹 방지)
+async def load_logs_async():
+    if not os.path.exists(LOGS_FILE):
+        return []
+    try:
+        async with aiofiles.open(LOGS_FILE, mode="r", encoding="utf-8") as f:
+            content = await f.read()
+            return json.loads(content) if content else []
+    except Exception as e:
+        logger.error(f"로그 파일 로드 실패: {e}")
+        return []
 
 @app.post("/api/query", response_model=QueryResponse)
 async def query(request: QueryRequest):
-    # LangGraph 상태 머신 비동기 실행 (ainvoke)
-    # 초기 상태(CacheState)를 정의하여 파이프라인에 주입
-    result = await cache_graph.ainvoke(CacheState(
-        query=request.query,
-        embedding=[],
-        similarity=0.0,
-        is_cache_hit=False,
-        cached_response=None,
-        backend_response=None,
-        response_time=0.0,
-        cost_saved=0.0,
-        start_time=0.0
-    ))
+    try:
+        # LangGraph 상태 초기화 충돌 방지를 위해 전체 상태가 아닌 필수 입력값만 전달
+        # 동기(sync) 노드로 구성된 그래프의 안정적인 실행을 위해 invoke를 스레드풀로 위임
+        result = await run_in_threadpool(
+            cache_graph.invoke,
+            {"query": request.query}
+        )
 
-    # 상태 머신 처리 결과를 Pydantic 모델에 맞추어 반환
-    # 캐시 히트 시 cached_response, 미스 시 backend_response를 사용
-    return QueryResponse(
-        response=result["cached_response"] or result["backend_response"],
-        is_cache_hit=result["is_cache_hit"],
-        response_time=result["response_time"],
-        similarity=result["similarity"],
-        cost_saved=result["cost_saved"]
-    )
+        return QueryResponse(
+            # TypedDict의 안전한 키 접근을 위해 get() 메서드 사용
+            response=result.get("cached_response") or result.get("backend_response"),
+            is_cache_hit=result.get("is_cache_hit", False),
+            response_time=result.get("response_time", 0.0),
+            similarity=result.get("similarity", 0.0),
+            cost_saved=result.get("cost_saved", 0.0)
+        )
+    except Exception as e:
+        logger.error(f"쿼리 처리 중 내부 오류 발생: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="서버 내부에서 쿼리를 처리하는 중 오류가 발생했습니다.")
 
 @app.get("/api/stats")
 async def stats():
-    """대시보드 통계를 위한 실제 통계 산출 엔드포인트"""
-    logs = load_logs()
-    store_stats = store.get_stats()
+    logs = await load_logs_async()
+    try:
+        store_stats = store.get_stats()
+    except Exception as e:
+        logger.warning(f"벡터 스토어 통계 조회 실패: {e}")
+        store_stats = {"total_vectors": 0}
 
     total_queries = len(logs)
     cache_hits = sum(1 for log in logs if log.get("is_cache_hit", False))
     total_cost_saved = sum(log.get("cost_saved", 0.0) for log in logs)
-
-    # 평균 응답 시간 계산 (캐시 히트 및 캐시 미스 모두 포함)
     avg_response_time = (sum(log.get("response_time", 0.0) for log in logs) / total_queries) if total_queries > 0 else 0.0
 
     return {
-        "cache_size": store_stats["total_vectors"],
+        "cache_size": store_stats.get("total_vectors", 0),
         "queries_processed": total_queries,
         "total_cost_saved": round(total_cost_saved, 4),
         "avg_response_time": round(avg_response_time, 3),
@@ -103,10 +108,9 @@ async def stats():
 
 @app.get("/api/logs")
 async def get_logs(query: Optional[str] = None, status: Optional[str] = None):
-    """상세 로그 조회를 위한 검색 및 필터링 엔드포인트"""
-    logs = load_logs()
-
+    logs = await load_logs_async()
     filtered_logs = logs
+
     if query:
         query_lower = query.lower()
         filtered_logs = [log for log in filtered_logs if query_lower in log.get("query", "").lower() or query_lower in log.get("response", "").lower()]
@@ -125,9 +129,6 @@ async def get_logs(query: Optional[str] = None, status: Optional[str] = None):
 
 @app.get("/api/charts")
 async def charts():
-    """대시보드 차트 시각화를 위한 동적/정적 차트 데이터 엔드포인트"""
-    # 1. 쿼리 처리 현황 (캐시 히트 vs API 호출) - 월별 누적 데이터
-    # 기본 데이터 구조 설정
     bar_data = [
         {"name": "Jan", "cache": 0, "api": 2400},
         {"name": "Feb", "cache": 3000, "api": 1398},
@@ -138,15 +139,13 @@ async def charts():
         {"name": "Jul", "cache": 3490, "api": 0},
     ]
 
-    # 최근 유입 로그의 개수를 계산하여 차트의 마지막 달(7월) 캐시 및 API에 가산
-    logs = load_logs()
+    logs = await load_logs_async()
     real_cache_hit = sum(1 for log in logs if log.get("is_cache_hit", False))
     real_api_call = sum(1 for log in logs if not log.get("is_cache_hit", False))
 
     bar_data[-1]["cache"] += real_cache_hit
     bar_data[-1]["api"] += real_api_call
 
-    # 2. 시간대별 트래픽 유입 트렌드 (응답 지연 속도 추이)
     line_data = [
         {"time": "09:00", "latency": 45},
         {"time": "12:00", "latency": 85},
@@ -155,7 +154,6 @@ async def charts():
     ]
 
     if logs:
-        # 최근 4개 로그의 응답 속도 밀리초 단위를 가져와 트렌드에 반영
         recent_latencies = [int(log.get("response_time", 0.0) * 1000) for log in logs[:4]]
         for idx, lat in enumerate(recent_latencies):
             if idx < len(line_data):
@@ -168,6 +166,4 @@ async def charts():
 
 @app.get("/health")
 async def health():
-    """서버 상태 확인용 헬스 체크 엔드포인트"""
     return {"status": "ok", "version": "1.0.0"}
-

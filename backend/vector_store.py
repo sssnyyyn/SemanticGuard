@@ -5,12 +5,13 @@ import pickle
 import os
 
 class FAISSVectorStore:
-    def __init__(self, dimension: int = 384, save_path: str = "cache.faiss"):
+    def __init__(self, dimension: int = 768, save_path: str = "cache.faiss"):
         self.dimension = dimension
         self.index = faiss.IndexFlatL2(dimension)
         self.save_path = save_path
         self.queries = []  # 쿼리 원본 저장
         self.responses = {}  # 쿼리 → 응답 매핑
+
 
         # 기존 인덱스 로드
         if os.path.exists(save_path):
