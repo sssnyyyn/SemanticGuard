@@ -9,6 +9,8 @@
   font-weight: 600;
   margin-bottom: 16px;
   color: var(--text-primary);
+  border-left: 4px solid var(--primary-color);
+  padding-left: 10px;
 }
 
 .filter-card {
@@ -114,11 +116,11 @@
 .log-table td {
   font-size: 0.95rem;
   color: var(--text-primary);
-  border-bottom: 2px solid var(--primary-color);
+  border-bottom: 2px solid var(--border-color);
 }
 
 .log-table tr:last-child td {
-  border-bottom: 2px solid var(--primary-color);
+  border-bottom: 2px solid var(--border-color);
 }
 
 .log-time {

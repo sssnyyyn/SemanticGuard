@@ -1,0 +1,341 @@
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 1열 1행 & 2행 Grid 배치 */
+.settings-grid-1row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.settings-section-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  border-left: 4px solid var(--primary-color);
+  padding-left: 10px;
+}
+
+.settings-desc {
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* 슬라이더 스타일 */
+.slider-wrapper {
+  background-color: var(--bg-color);
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 20px;
+}
+
+.slider-limits {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.slider-control-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.settings-slider {
+  flex: 1;
+  accent-color: var(--primary-color);
+  height: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.threshold-badge {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--primary-color);
+  padding: 8px 16px;
+  background-color: rgba(222, 123, 99, 0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(222, 123, 99, 0.15);
+  min-width: 65px;
+  text-align: center;
+}
+
+.settings-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.settings-save-btn {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.settings-save-btn:hover {
+  background-color: var(--primary-hover);
+}
+
+.settings-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-msg {
+  font-size: 0.85rem;
+  font-weight: 600;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.settings-msg.success {
+  color: var(--success-color);
+}
+
+.settings-msg.error {
+  color: var(--danger-color);
+}
+
+/* 로컬 임베딩 인덱스 모니터링 상세 스펙 */
+.index-monitor-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: var(--bg-color);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 20px;
+}
+
+.spec-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border-color);
+  font-size: 0.9rem;
+}
+
+.spec-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.spec-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.spec-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.spec-value.highlight-val {
+  color: var(--primary-color);
+}
+
+.font-mono {
+  font-family: Consolas, Monaco, monospace;
+}
+
+/* 위험 구역 경고 상자 */
+.warning-reset-section {
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  background-color: rgba(239, 68, 68, 0.03);
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.warning-text {
+  font-size: 0.8rem;
+  color: var(--danger-color);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.reset-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.settings-clear-btn {
+  background-color: var(--danger-color);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: var(--transition);
+}
+
+.settings-clear-btn:hover {
+  background-color: #DC2626;
+}
+
+.settings-clear-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 2열 하단: 업스트림 테이블 스타일링 (기존 테이블과 일관성 유지) */
+.upstream-table-wrapper {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  margin-top: 16px;
+}
+
+.upstream-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.upstream-table th {
+  background-color: #F8FAFC; /* 기존 헤더와 일치하는 밝은 슬레이트 색상 */
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 14px 18px;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.upstream-table td {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.upstream-table tr:last-child td {
+  border-bottom: none;
+}
+
+.infra-type {
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.infra-type.fallback-td {
+  color: var(--text-tertiary);
+}
+
+.infra-url {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.infra-latency {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.infra-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 영롱한 LED 인디케이터 */
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-indicator.active {
+  background-color: var(--success-color);
+  box-shadow: 0 0 8px var(--success-color);
+  animation: pulseActive 2s infinite ease-in-out;
+}
+
+.status-indicator.standby {
+  background-color: #F59E0B;
+  box-shadow: 0 0 8px #F59E0B;
+  animation: pulseStandby 3s infinite ease-in-out;
+}
+
+.status-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-text.text-active {
+  color: var(--success-color);
+}
+
+.status-text.text-standby {
+  color: #D97706;
+}
+
+/* 반응형 모바일 지원 */
+@media (max-width: 900px) {
+  .settings-grid-1row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.settings-loading {
+  padding: 50px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+@keyframes pulseActive {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes pulseStandby {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}

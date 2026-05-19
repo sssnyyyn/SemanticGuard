@@ -36,10 +36,9 @@ const Log = () => {
 
   return (
     <div className="log-container">
-      <h2 className="section-title">상세 로그 조회</h2>
-
       {/* 검색 필터 카드 */}
       <form onSubmit={handleSearchSubmit} className="card-box filter-card">
+        <h2 className="section-title filter-title" style={{ gridColumn: '1 / -1', marginBottom: '8px' }}>상세 로그 조회</h2>
         <div className="filter-group">
           <label className="filter-label">검색어 입력</label>
           <input

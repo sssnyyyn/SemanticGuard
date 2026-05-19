@@ -28,7 +28,7 @@ const DashboardCharts = ({ chartsData }) => {
   return (
     <div className="charts-grid">
       <div className="card-box chart-card">
-        <h3 className="chart-title">쿼리 처리 현황 (캐시 히트 vs 원본 API)</h3>
+        <h3 className="chart-title">AI 답변 출처 비율 (비용 절감 캐시 vs 유료 API 호출)</h3>
         <div className="chart-container">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
@@ -53,7 +53,7 @@ const DashboardCharts = ({ chartsData }) => {
       </div>
 
       <div className="card-box chart-card">
-        <h3 className="chart-title">시간대별 트래픽 유입 트렌드</h3>
+        <h3 className="chart-title">시간대별 이용자 질문 유입 추이</h3>
         <div className="chart-container">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart

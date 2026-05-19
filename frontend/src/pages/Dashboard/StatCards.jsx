@@ -16,62 +16,76 @@ const SparklineMock = () => {
 };
 
 const StatCards = ({ data }) => {
-  const baseQueries = 1280 + (data?.queries_processed || 0);
-  const baseHits = 856 + (data?.queries_processed ? Math.round(data.queries_processed * (data.cache_hit_rate / 100)) : 0);
-  const hitRate = baseQueries > 0
-    ? ((baseHits / baseQueries) * 100).toFixed(1)
-    : 66.8;
-  const avgResponse = data?.queries_processed
-    ? data.avg_response_time
-    : 0.04;
-  const costSaved = 6.42 + (data?.total_cost_saved || 0);
+  const totalQueries = data?.queries_processed || 0;
+  const totalHits = data?.cache_hits || 0;
+  const hitRate = data?.cache_hit_rate !== undefined ? data.cache_hit_rate : 0.0;
+  const avgResponse = data?.avg_response_time !== undefined ? data.avg_response_time : 0.0;
+  const costSaved = data?.total_cost_saved || 0.0;
+
+  const qChange = data?.changes?.queries || '0.0%';
+  const hChange = data?.changes?.hits || '0.0%';
+  const lChange = data?.changes?.latency || '0.0%';
+  const sChange = data?.changes?.savings || '$0.0000';
 
   const stats = [
     {
       title: '전체 쿼리 수',
-      value: baseQueries.toLocaleString(),
-      change: data?.queries_processed ? `+${data.queries_processed} 신규` : '+12%',
-      isPositive: true
+      value: totalQueries.toLocaleString(),
+      change: qChange,
+      subText: 'yesterday'
     },
     {
       title: '누적 캐시 히트 수',
-      value: `${baseHits.toLocaleString()} (${hitRate}%)`,
-      change: `지연율 저하`,
-      isPositive: true
+      value: `${totalHits.toLocaleString()} (${hitRate}%)`,
+      change: hChange,
+      subText: 'yesterday'
     },
     {
       title: '평균 응답 속도',
-      value: `${avgResponse}s`,
-      change: data?.queries_processed ? `실시간` : '-0.076s',
-      isPositive: true
+      value: `${avgResponse.toFixed(3)}s`,
+      change: lChange,
+      subText: 'yesterday'
     },
     {
       title: 'API 비용 절감액',
-      value: `$${costSaved.toFixed(3)}`,
-      change: data?.total_cost_saved ? `+$${data.total_cost_saved.toFixed(3)}` : '+$0.005',
-      isPositive: true
+      value: `$${costSaved.toFixed(4)}`,
+      change: sChange,
+      subText: 'yesterday'
     }
   ];
 
   return (
     <div className="stat-cards-grid">
-      {stats.map((stat, index) => (
-        <div key={index} className="card-box stat-card">
-          <div className="stat-header">
-            <div>
-              <div className="stat-title">{stat.title}</div>
-              <div className="stat-value">{stat.value}</div>
+      {stats.map((stat, index) => {
+        // 회장님의 황금 지시: + 기호가 있으면 무조건 초록색(positive), - 기호가 있으면 무조건 빨간색(negative)
+        const hasPlus = stat.change.includes('+');
+        const hasMinus = stat.change.includes('-');
+        
+        let changeClass = 'neutral';
+        if (hasPlus) {
+          changeClass = 'positive';
+        } else if (hasMinus) {
+          changeClass = 'negative';
+        }
+
+        return (
+          <div key={index} className="card-box stat-card">
+            <div className="stat-header">
+              <div>
+                <div className="stat-title">{stat.title}</div>
+                <div className="stat-value">{stat.value}</div>
+              </div>
+              <SparklineMock />
             </div>
-            <SparklineMock />
+            <div className="stat-footer">
+              <span className={`stat-change ${changeClass}`}>
+                {stat.change}
+              </span>
+              <span className="stat-period">{stat.subText}</span>
+            </div>
           </div>
-          <div className="stat-footer">
-            <span className={`stat-change ${stat.isPositive ? (stat.title === '평균 응답 속도' ? 'negative' : 'positive') : 'negative'}`}>
-              {stat.change}
-            </span>
-            <span className="stat-period">last month</span>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

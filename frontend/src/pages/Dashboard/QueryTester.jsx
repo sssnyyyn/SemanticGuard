@@ -35,7 +35,7 @@ const QueryTester = ({ onQuerySuccess }) => {
 
   return (
     <div className="card-box query-tester-card">
-      <h2 className="section-title">실시간 쿼리 테스터</h2>
+      <h2 className="section-title">실시간 AI 캐시 테스트</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <textarea
           className="query-input"
