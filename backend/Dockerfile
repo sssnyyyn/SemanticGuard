@@ -15,8 +15,6 @@ COPY requirements.txt .
 # pip 캐시를 사용하지 않고 패키지 설치 (이미지 경량화 목적)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# PRD 위험 완화 전략에 따라, 컨테이너 빌드 시 임베딩 모델을 미리 다운로드하여 실행 속도 확보
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 # 나머지 전체 프로젝트 소스 코드 복사
 COPY . .

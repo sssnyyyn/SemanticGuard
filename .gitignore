@@ -35,3 +35,6 @@ backend/logs.json
 backend/cache.faiss
 backend/cache.faiss.meta
 backend/settings.json
+
+# 6. Local Developer Documents (Not Uploaded to Git)
+troubleshooting.md
