@@ -79,27 +79,35 @@ async def query(request: QueryRequest):
 
         response_text = result.get("cached_response") or result.get("backend_response")
         is_cache_hit = result.get("is_cache_hit", False)
-        response_time = result.get("response_time", 0.0)
-        similarity = result.get("similarity", 0.0)
-        cost_saved = result.get("cost_saved", 0.0)
+        
+        # NumPy float32 타입 등으로 인한 JSON 직렬화 에러를 방지하기 위해 내장 float로 명시적 형변환
+        response_time = float(result.get("response_time", 0.0))
+        similarity = float(result.get("similarity", 0.0))
+        cost_saved = float(result.get("cost_saved", 0.0))
 
-        # 2. 신규 로그 데이터 생성 (float32 -> float 강제 변환 처리 추가)
+        # 2. 신규 로그 데이터 생성
         new_log = {
             "query": request.query,
-            "response": response_text,
+            "response": response_text,  # 응답 내용 저장
             "is_cache_hit": is_cache_hit,
-            "response_time": float(response_time), # 강제 변환
-            "similarity": float(similarity),       # 강제 변환
-            "cost_saved": float(cost_saved),       # 강제 변환
+            "response_time": response_time,
+            "similarity": similarity,
+            "cost_saved": cost_saved,
             "timestamp": datetime.now().strftime("%Y.%m.%d %H:%M:%S")
         }
 
         # 3. 비동기 로그 파일 갱신 (Race condition 방지 및 최신순 정렬)
         logs = await load_logs_async()
-        logs.insert(0, new_log)  # 최신 데이터가 배열의 맨 앞에 오도록 추가
+        logs.insert(0, new_log)  # 최신 데이터가 기존 데이터 배열의 맨 앞에 오도록 추가
 
-        async with aiofiles.open(LOGS_FILE, mode="w", encoding="utf-8") as f:
-            await f.write(json.dumps(logs, ensure_ascii=False, indent=2))
+        # [안전장치] 파일 쓰기를 시작하기 전에 JSON 직렬화가 완벽히 성공하는지 검증합니다.
+        # 이를 통해 만약의 에러 상황에서도 기존 logs.json 파일이 비워지는 현상을 예방합니다.
+        try:
+            dumped_data = json.dumps(logs, ensure_ascii=False, indent=2)
+            async with aiofiles.open(LOGS_FILE, mode="w", encoding="utf-8") as f:
+                await f.write(dumped_data)
+        except TypeError as e:
+            logger.error(f"로그 JSON 직렬화 중 에러가 발생하여 파일 쓰기를 건너뛰었습니다. (기존 로그 보존): {e}")
 
         # 4. 프론트엔드로 결과 반환
         return QueryResponse(
