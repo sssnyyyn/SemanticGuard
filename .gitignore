@@ -31,7 +31,6 @@ Thumbs.db
 Desktop.ini
 
 # 5. SemanticGuard Runtime Data & Local Cache
-backend/logs.json
 backend/cache.faiss
 backend/cache.faiss.meta
 backend/settings.json
