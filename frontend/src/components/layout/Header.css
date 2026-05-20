@@ -24,10 +24,9 @@
 }
 
 .logo-icon {
-  width: 24px;
-  height: 24px;
-  background-color: var(--text-primary);
-  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 
 .logo-text {

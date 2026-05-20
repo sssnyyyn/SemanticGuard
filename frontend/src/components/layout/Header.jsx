@@ -29,7 +29,7 @@ const Header = () => {
     <header className="top-header">
       <div className="header-left">
         <div className="logo-container">
-          <div className="logo-icon"></div>
+          <img src="/docs/images/logo.png" alt="SemanticGuard Logo" className="logo-icon" />
           <span className="logo-text">SemanticGuard</span>
         </div>
       </div>
