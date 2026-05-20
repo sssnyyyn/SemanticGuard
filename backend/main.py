@@ -83,14 +83,14 @@ async def query(request: QueryRequest):
         similarity = result.get("similarity", 0.0)
         cost_saved = result.get("cost_saved", 0.0)
 
-        # 2. 신규 로그 데이터 생성
+        # 2. 신규 로그 데이터 생성 (float32 -> float 강제 변환 처리 추가)
         new_log = {
             "query": request.query,
-            "response": response_text,  # 응답 내용도 저장
+            "response": response_text,
             "is_cache_hit": is_cache_hit,
-            "response_time": response_time,
-            "similarity": similarity,
-            "cost_saved": cost_saved,
+            "response_time": float(response_time), # 강제 변환
+            "similarity": float(similarity),       # 강제 변환
+            "cost_saved": float(cost_saved),       # 강제 변환
             "timestamp": datetime.now().strftime("%Y.%m.%d %H:%M:%S")
         }
 
@@ -192,7 +192,7 @@ async def stats():
 
 @app.get("/api/logs")
 async def get_logs(
-    query: Optional[str] = None, 
+    query: Optional[str] = None,
     status: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None
@@ -209,7 +209,7 @@ async def get_logs(
     if start_date:
         start_date_formatted = start_date.replace("-", ".")
         filtered_logs = [log for log in filtered_logs if log.get("timestamp", "")[:10] >= start_date_formatted]
-        
+
     if end_date:
         end_date_formatted = end_date.replace("-", ".")
         filtered_logs = [log for log in filtered_logs if log.get("timestamp", "")[:10] <= end_date_formatted]
@@ -231,10 +231,10 @@ async def charts():
     # 1. barData 동적 생성 (오늘 기준 최근 7일간의 일자별 캐시 히트 vs API 호출 집계)
     today = datetime.now()
     past_7_days = [(today - timedelta(days=i)).strftime("%m/%d") for i in range(6, -1, -1)]
-    
+
     # 일자별 딕셔너리 초기화
     day_counts = {day: {"cache": 0, "api": 0} for day in past_7_days}
-    
+
     # 로그 데이터를 순회하며 최근 7일 통계 누적
     for log in logs:
         timestamp_str = log.get("timestamp", "")
@@ -264,7 +264,7 @@ async def charts():
             log_time = datetime.strptime(timestamp_str, "%Y.%m.%d %H:%M:%S").strftime("%H:%M:%S")
         except Exception:
             log_time = "00:00:00"
-            
+
         latency_ms = int(log.get("response_time", 0.0) * 1000)
         line_data.append({
             "time": log_time,
@@ -304,7 +304,7 @@ async def get_settings():
             threshold = float(os.getenv("SIMILARITY_THRESHOLD", "0.75"))
     else:
         threshold = float(os.getenv("SIMILARITY_THRESHOLD", "0.75"))
-        
+
     # cache.faiss 파일의 마지막 수정 시각 계산
     faiss_path = os.getenv("FAISS_SAVE_PATH", "cache.faiss")
     last_updated = "인덱스 생성 대기 중"
@@ -314,7 +314,7 @@ async def get_settings():
             last_updated = datetime.fromtimestamp(mtime).strftime("%Y.%m.%d %H:%M:%S")
         except Exception:
             last_updated = "기록 오류"
-            
+
     # 실제 logs.json으로부터 업스트림(API 호출) 평균 레이턴시 계산
     avg_upstream_latency = "N/A"
     try:
@@ -329,9 +329,9 @@ async def get_settings():
                 avg_upstream_latency = "1.25s (기본 대기)"
     except Exception:
         avg_upstream_latency = "1.25s (기본 대기)"
-        
+
     from vector_store import store
-    
+
     # 도커 배포 환경인지 환경 변수 등으로 정밀 판별
     is_docker = os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER") is not None
     env_str = "production (Docker Container)" if is_docker else "development (Local Host)"
@@ -345,7 +345,7 @@ async def get_settings():
         "vector_count": store.index.ntotal,
         "last_updated_at": last_updated,
         "environment": env_str,
-        
+
         # 업스트림 연결 상태 메타데이터
         "upstream": {
             "primary_endpoint": "Google Gemini API v1beta (gemini-2.5-flash)",
@@ -361,7 +361,7 @@ async def save_settings(payload: SettingsModel):
         val = payload.similarity_threshold
         if val < 0.0 or val > 1.0:
             raise HTTPException(status_code=400, detail="유사도 임계치는 0.0에서 1.0 사이여야 합니다.")
-        
+
         settings = {"similarity_threshold": round(val, 2)}
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
             json.dump(settings, f, ensure_ascii=False, indent=2)
@@ -376,7 +376,7 @@ async def clear_cache():
         from vector_store import store
         # 1. FAISS 백엔드 벡터 완전 리셋
         store.clear()
-        
+
         # 2. logs.json 초기 데이터 시딩 복원 (더미 로그 복원 또는 비우기)
         SEED_FILE = os.path.join(os.path.dirname(__file__), "seed_logs.json")
         if os.path.exists(SEED_FILE):
@@ -391,7 +391,7 @@ async def clear_cache():
         else:
             with open(LOGS_FILE, "w", encoding="utf-8") as f:
                 json.dump([], f)
-                
+
         return {"status": "success", "message": "캐시 및 관제 시스템 로그가 안전하게 초기화되었습니다."}
     except Exception as e:
         logger.error(f"캐시 초기화 중 오류: {e}")
@@ -406,28 +406,28 @@ def send_naver_email(sender_email: str, subject: str, content: str) -> bool:
     import smtplib
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
-    
+
     to_email = "happy08164@naver.com"
 
     smtp_user = os.getenv("SMTP_USER", "")
     smtp_pass = os.getenv("SMTP_PASSWORD", "")
-    
+
     if not smtp_user or not smtp_pass:
         logger.warning(".env 파일에 SMTP_USER 또는 SMTP_PASSWORD 설정이 비어있어 모의 메일 전송으로 우회 처리합니다. (수신 예정 메일: 관리자 지정 이메일)")
         return False
-        
+
     try:
         smtp_host = "smtp.naver.com"
         smtp_port = 465 # SSL 보안 포트
-        
+
         msg = MIMEMultipart()
         msg['From'] = smtp_user
         msg['To'] = to_email
         msg['Subject'] = f"[SemanticGuard 문의] {subject}"
-        
+
         body_text = f"문의 고객 회신처: {sender_email}\n\n문의 사항 내용:\n{content}"
         msg.attach(MIMEText(body_text, 'plain', 'utf-8'))
-        
+
         with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
             server.login(smtp_user, smtp_pass)
             server.sendmail(smtp_user, to_email, msg.as_string())
@@ -444,10 +444,10 @@ async def create_inquiry(payload: InquiryRequest):
     logger.info(f"제목: {payload.title}")
     logger.info(f"내용: {payload.content}")
     logger.info("=================================================")
-    
+
     # 실제 네이버 SMTP 메일 전송 시도
     sent = send_naver_email(payload.email, payload.title, payload.content)
-    
+
     if sent:
         return {
             "status": "success",
