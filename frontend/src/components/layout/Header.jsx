@@ -28,7 +28,7 @@ const Header = () => {
   return (
     <header className="top-header">
       <div className="header-left">
-        <div className="logo-container">
+        <div className="logo-container" onClick={() => navigate('/dashboard')}>
           <img src="/docs/images/logo.png" alt="SemanticGuard Logo" className="logo-icon" />
           <span className="logo-text">SemanticGuard</span>
         </div>
