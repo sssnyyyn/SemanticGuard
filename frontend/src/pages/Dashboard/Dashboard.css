@@ -314,3 +314,19 @@ svg:focus {
   font-weight: 700;
   color: var(--text-primary);
 }
+
+/* Responsive media queries to prevent dashboard grid from breaking the sidebar layout */
+@media (max-width: 1200px) {
+  .stat-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .stat-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
