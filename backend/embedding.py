@@ -26,7 +26,11 @@ def get_embedding(text: str) -> np.ndarray:
         )
         if result and result.embeddings:
             embedding_vector = result.embeddings[0].values
-            return np.array(embedding_vector, dtype=np.float32)
+            arr = np.array(embedding_vector, dtype=np.float32)
+            norm = np.linalg.norm(arr)
+            if norm > 0:
+                arr = arr / norm
+            return arr
         else:
             raise ValueError("Gemini 임베딩 API 결과가 비어 있습니다.")
     except Exception as e:

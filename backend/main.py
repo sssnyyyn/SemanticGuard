@@ -85,19 +85,23 @@ async def query(request: QueryRequest):
         similarity = float(result.get("similarity", 0.0))
         cost_saved = float(result.get("cost_saved", 0.0))
 
-        # 2. 신규 로그 데이터 생성
-        new_log = {
-            "query": request.query,
-            "response": response_text,  # 응답 내용 저장
-            "is_cache_hit": is_cache_hit,
-            "response_time": response_time,
-            "similarity": similarity,
-            "cost_saved": cost_saved,
-            "timestamp": datetime.now().strftime("%Y.%m.%d %H:%M:%S")
-        }
-
         # 3. 비동기 로그 파일 갱신 (Race condition 방지 및 최신순 정렬)
         logs = await load_logs_async()
+        
+        # 2. 신규 로그 데이터 생성 (단일 비동기 스키마 완전 동기화)
+        new_id = max([log.get("id", 0) for log in logs], default=0) + 1
+        new_log = {
+            "id": new_id,
+            "timestamp": datetime.now().strftime("%Y.%m.%d %H:%M:%S"),
+            "query": request.query,
+            "response": response_text,
+            "is_cache_hit": is_cache_hit,
+            "response_time": round(response_time, 3),
+            "similarity": round(similarity, 3),
+            "cost_saved": round(cost_saved, 4),
+            "status": "성공"
+        }
+
         logs.insert(0, new_log)  # 최신 데이터가 기존 데이터 배열의 맨 앞에 오도록 추가
 
         # [안전장치] 파일 쓰기를 시작하기 전에 JSON 직렬화가 완벽히 성공하는지 검증합니다.

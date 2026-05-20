@@ -33,9 +33,9 @@ class FAISSVectorStore:
             np.array([embedding], dtype=np.float32), k
         )
 
-        # 거리 → 유사도 (L2 거리)
+        # 정규화된 벡터 간 L2 제곱 거리(distance)를 코사인 유사도로 변환
         distance = distances[0][0]
-        similarity = 1 / (1 + distance)  # 0~1 범위로 정규화
+        similarity = float(1.0 - distance / 2.0)
 
         if k > 0 and similarity > 0:
             response = self.responses.get(indices[0][0])

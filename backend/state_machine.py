@@ -47,32 +47,7 @@ def init_logs_file():
 
 init_logs_file()
 
-def save_log_entry(query: str, response: str, is_cache_hit: bool, response_time: float, similarity: float, cost_saved: float):
-    """실행 완료된 쿼리 및 응답 메트릭을 logs.json에 실시간 기록"""
-    try:
-        logs = []
-        if os.path.exists(LOGS_FILE):
-            with open(LOGS_FILE, "r", encoding="utf-8") as f:
-                logs = json.load(f)
 
-        new_id = max([log["id"] for log in logs], default=0) + 1
-        new_log = {
-            "id": new_id,
-            "timestamp": datetime.now().strftime("%Y.%m.%d %H:%M:%S"),
-            "query": query,
-            "response": response,
-            "is_cache_hit": is_cache_hit,
-            "response_time": round(response_time, 3),
-            "similarity": round(similarity, 3),
-            "cost_saved": round(cost_saved, 4),
-            "status": "성공"
-        }
-        logs.insert(0, new_log) # 대시보드 및 상세 로그 최근순 정렬을 위해 처음에 추가
-
-        with open(LOGS_FILE, "w", encoding="utf-8") as f:
-            json.dump(logs, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"로그 기록 오류 발생: {e}")
 
 # LangGraph 상태 모델 정의 (TypedDict 사용)
 class CacheState(TypedDict):
@@ -189,15 +164,6 @@ def calculate_metrics_node(state: CacheState) -> CacheState:
         # 3. 캐시 미스 시: 실제 LLM 비용이 소비되었으므로 절감액은 $0
         state["cost_saved"] = 0.0
 
-    # 로그를 logs.json 파일에 실시간 저장
-    save_log_entry(
-        query=query_text,
-        response=final_response,
-        is_cache_hit=state["is_cache_hit"],
-        response_time=state["response_time"],
-        similarity=state["similarity"],
-        cost_saved=state["cost_saved"]
-    )
     return state
 
 # LangGraph 그래프 구조 정의 및 노드 배치
