@@ -36,8 +36,6 @@
 .logo-icon {
   width: 24px;
   height: 24px;
-  background-color: var(--text-primary);
-  border-radius: 50%;
 }
 
 .logo-text {
