@@ -8,6 +8,7 @@ import logging
 import aiofiles
 from typing import Optional
 from dotenv import load_dotenv
+from datetime import datetime
 
 from state_machine import cache_graph, CacheState
 from vector_store import store
@@ -70,20 +71,43 @@ async def load_logs_async():
 @app.post("/api/query", response_model=QueryResponse)
 async def query(request: QueryRequest):
     try:
-        # LangGraph 상태 초기화 충돌 방지를 위해 전체 상태가 아닌 필수 입력값만 전달
-        # 동기(sync) 노드로 구성된 그래프의 안정적인 실행을 위해 invoke를 스레드풀로 위임
+        # 1. AI 모델 캐시 및 응답 처리
         result = await run_in_threadpool(
             cache_graph.invoke,
             {"query": request.query}
         )
 
+        response_text = result.get("cached_response") or result.get("backend_response")
+        is_cache_hit = result.get("is_cache_hit", False)
+        response_time = result.get("response_time", 0.0)
+        similarity = result.get("similarity", 0.0)
+        cost_saved = result.get("cost_saved", 0.0)
+
+        # 2. 신규 로그 데이터 생성
+        new_log = {
+            "query": request.query,
+            "response": response_text,  # 응답 내용도 저장
+            "is_cache_hit": is_cache_hit,
+            "response_time": response_time,
+            "similarity": similarity,
+            "cost_saved": cost_saved,
+            "timestamp": datetime.now().strftime("%Y.%m.%d %H:%M:%S")
+        }
+
+        # 3. 비동기 로그 파일 갱신 (Race condition 방지 및 최신순 정렬)
+        logs = await load_logs_async()
+        logs.insert(0, new_log)  # 최신 데이터가 배열의 맨 앞에 오도록 추가
+
+        async with aiofiles.open(LOGS_FILE, mode="w", encoding="utf-8") as f:
+            await f.write(json.dumps(logs, ensure_ascii=False, indent=2))
+
+        # 4. 프론트엔드로 결과 반환
         return QueryResponse(
-            # TypedDict의 안전한 키 접근을 위해 get() 메서드 사용
-            response=result.get("cached_response") or result.get("backend_response"),
-            is_cache_hit=result.get("is_cache_hit", False),
-            response_time=result.get("response_time", 0.0),
-            similarity=result.get("similarity", 0.0),
-            cost_saved=result.get("cost_saved", 0.0)
+            response=response_text,
+            is_cache_hit=is_cache_hit,
+            response_time=response_time,
+            similarity=similarity,
+            cost_saved=cost_saved
         )
     except Exception as e:
         logger.error(f"쿼리 처리 중 내부 오류 발생: {e}", exc_info=True)
